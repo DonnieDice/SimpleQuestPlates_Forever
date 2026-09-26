@@ -40,20 +40,20 @@ jobs:
       contents: write
 
     steps:
-      - name: ðŸ› ï¸ Clone Project
+      - name: 🛠️ Clone Project
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: ðŸ§° Install jq
+      - name: 🧰 Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
 
-      - name: ðŸ§‘â€ðŸ”§ Configure Git User
+      - name: 🧑‍🔧 Configure Git User
         run: |
           git config --global user.name "donniedice"
           git config --global user.email "donniedice@protonmail.com"
 
-      - name: ðŸ§­ Determine Release Type
+      - name: 🧭 Determine Release Type
         id: release_type
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
@@ -81,7 +81,7 @@ jobs:
             esac
           fi
 
-      - name: ðŸ“¦ Extract Version from TOC
+      - name: 📦 Extract Version from TOC
         id: version
         run: |
           version=$(grep -oP '^## Version: \K(.*)' SQP_Forever.toc)
@@ -123,7 +123,7 @@ jobs:
             fi
           fi
 
-      - name: ðŸ“ Extract Latest Changelog
+      - name: 📝 Extract Latest Changelog
         id: changelog
         shell: bash
         run: |
@@ -161,15 +161,15 @@ jobs:
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
-      - name: ðŸ“¦ Package and Release
+      - name: 📦 Package and Release
         uses: BigWigsMods/packager@master
 
-      - name: â„¹ï¸ Upload Notes
+      - name: ℹ️ Upload Notes
         run: |
           echo "CurseForge and Wago uploads are handled by BigWigsMods/packager."
           echo "Project IDs come from X-Curse-Project-ID and X-Wago-ID in SQP_Forever.toc."
 
-      - name: ðŸ“¢ Send Discord Notification
+      - name: 📢 Send Discord Notification
         if: success()
         shell: bash
         env:
@@ -186,25 +186,25 @@ jobs:
             "release")
               title="SQP Forever | Simple Quest Plates! ${version}"
               color=35071
-              footer="RGX Mods â€¢ Stable Release"
+              footer="RGX Mods • Stable Release"
               description="A new stable release is live. Level up in style!"
               release_url="https://github.com/RGXMods/SQP_Forever/releases/tag/v${version#v}"
-              downloads="[CurseForge](https://www.curseforge.com/wow/addons/simple-quest-plates) â€¢ [Wago](https://addons.wago.io/addons/simple-quest-plates) â€¢ [GitHub](${release_url})"
+              downloads="[CurseForge](https://www.curseforge.com/wow/addons/simple-quest-plates) • [Wago](https://addons.wago.io/addons/simple-quest-plates) • [GitHub](${release_url})"
               channel="Release"
               ;;
             "beta")
               title="SQP Forever | Simple Quest Plates! ${version} (Beta)"
               color=16744448
-              footer="RGX Mods â€¢ Beta Build"
+              footer="RGX Mods • Beta Build"
               description="Beta build available for testing."
               release_url="https://github.com/RGXMods/SQP_Forever/releases/tag/v${version#v}"
-              downloads="[CurseForge](https://www.curseforge.com/wow/addons/simple-quest-plates) â€¢ [GitHub](${release_url})"
+              downloads="[CurseForge](https://www.curseforge.com/wow/addons/simple-quest-plates) • [GitHub](${release_url})"
               channel="Beta"
               ;;
             "alpha"|"alpha-branch")
               title="SQP Forever | Simple Quest Plates! ${version} (Alpha)"
               color=9109504
-              footer="RGX Mods â€¢ Alpha Build"
+              footer="RGX Mods • Alpha Build"
               description="Alpha build available for testing."
               release_url="https://github.com/RGXMods/SQP_Forever/tree/alpha"
               downloads="[GitHub Alpha Branch](${release_url})"
@@ -213,7 +213,7 @@ jobs:
             "dev")
               title="SQP Forever | Simple Quest Plates! ${version} (Dev)"
               color=3447003
-              footer="RGX Mods â€¢ Dev Build"
+              footer="RGX Mods • Dev Build"
               description="Development build from the dev branch."
               release_url="https://github.com/RGXMods/SQP_Forever/tree/dev"
               downloads="[GitHub Dev Branch](${release_url})"
@@ -265,7 +265,7 @@ jobs:
             -H "Content-Type: application/json" \
             -X POST -d @payload.json "$DISCORD_WEBHOOK"
 
-      - name: âŒ Send Failure Notification
+      - name: ❌ Send Failure Notification
         if: failure()
         run: |
           jq -n \
@@ -276,7 +276,7 @@ jobs:
               username: "SQP Build Failed",
               avatar_url: "https://raw.githubusercontent.com/RGXMods/SQP_Forever/main/media/logo.png",
               embeds: [{
-                title: "âŒ SQP Build Failed",
+                title: "❌ SQP Build Failed",
                 description: "The release workflow encountered an error",
                 url: "https://github.com/RGXMods/SQP_Forever/actions/runs/\($run_id)",
                 color: 15158332,
