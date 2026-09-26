@@ -1,0 +1,237 @@
+--=====================================================================================
+-- RGX | Simple Quest Plates! - options_kill.lua
+
+-- Author: DonnieDice
+-- Description: Kill icon tab (visibility, display style, animate, color, tinting, size, font)
+--=====================================================================================
+
+local addonName, SQP = ...
+
+function SQP:CreateKillOptions(content)
+    if not self.optionControls then self.optionControls = {} end
+
+    local leftColumn, rightColumn = SQP:CreateOptionColumns(content)
+
+    -- â”€â”€ Slider helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    local function MakeSlider(parent, labelText, key, defaultVal, minVal, maxVal, yOff)
+        local slider = SQP:CreateStyledSlider(parent, {
+            key = key,
+            label = labelText,
+            min = minVal,
+            max = maxVal,
+            step = 1,
+            default = defaultVal,
+            storage = SQPSettings,
+            width = 160,
+            onChange = function(val)
+                if SQP.previewFrame and SQP.previewFrame.activateKillMode then
+                    SQP.previewFrame.activateKillMode()
+                end
+                SQP:RefreshAllNameplates()
+            end,
+        })
+        slider:SetPoint("TOPLEFT", 20, yOff)
+        SQP.optionControls[key] = slider
+        SQP.optionControls[key .. "Label"] = slider.valueLabel
+        return yOff - 36
+    end
+
+    local function ActivateKill()
+        if SQP.previewFrame and SQP.previewFrame.activateKillMode then
+            SQP.previewFrame.activateKillMode()
+        end
+    end
+
+    -- â”€â”€ LEFT COLUMN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    local yOffset = -12
+
+    local header = leftColumn:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+    SQP:ApplyDefaultFont(header)
+    header:SetPoint("TOPLEFT", 20, yOffset)
+    header:SetText("|cff58be81Kill Icon|r")
+    yOffset = yOffset - 16
+
+    -- Show Kill Icon
+    local showFrame = self:CreateStyledCheckbox(leftColumn, "Show Kill Icon")
+    showFrame:SetPoint("TOPLEFT", 20, yOffset)
+    showFrame.checkbox:SetChecked(SQPSettings.showKillIcon ~= false)
+    self.optionControls.showKillIcon = showFrame.checkbox
+    showFrame.checkbox:SetScript("OnClick", function(self)
+        SQP:SetSetting('showKillIcon', self:GetChecked())
+        ActivateKill()
+        SQP:RefreshAllNameplates()
+    end)
+    yOffset = yOffset - 24
+
+    -- Display Style
+    yOffset = self:CreateDisplayStyleSection(leftColumn, "kill", ActivateKill, yOffset)
+
+    -- Animate Task Icons (kill + loot mini icons)
+    local animHeader = leftColumn:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+    SQP:ApplyDefaultFont(animHeader)
+    animHeader:SetPoint("TOPLEFT", 20, yOffset)
+    animHeader:SetText("|cff58be81Animate|r")
+    yOffset = yOffset - 16
+
+    local animFrame = self:CreateStyledCheckbox(leftColumn, "Animate Task Icons")
+    animFrame:SetPoint("TOPLEFT", 20, yOffset)
+    animFrame.checkbox:SetChecked(SQPSettings.animateQuestIcons == true)
+    self.optionControls.animateQuestIcons = animFrame.checkbox
+    animFrame.checkbox:SetScript("OnClick", function(self)
+        SQP:SetSetting('animateQuestIcons', self:GetChecked())
+        if SQP.optionControls and SQP.optionControls.animateQuestIconsLoot then
+            SQP.optionControls.animateQuestIconsLoot:SetChecked(self:GetChecked())
+        end
+        if SQP.optionControls and SQP.optionControls.animateQuestIconsPercent then
+            SQP.optionControls.animateQuestIconsPercent:SetChecked(self:GetChecked())
+        end
+        SQP:RefreshAllNameplates()
+    end)
+    yOffset = yOffset - 26
+
+    local animMainFrame = self:CreateStyledCheckbox(leftColumn, "Animate Main Icon")
+    animMainFrame:SetPoint("TOPLEFT", 20, yOffset)
+    animMainFrame.checkbox:SetChecked(SQPSettings.killAnimateMain == true)
+    self.optionControls.killAnimateMain = animMainFrame.checkbox
+    animMainFrame.checkbox:SetScript("OnClick", function(self)
+        SQP:SetSetting('killAnimateMain', self:GetChecked())
+        SQP:RefreshAllNameplates()
+    end)
+    yOffset = yOffset - 26
+
+    local killAnimIntensitySlider = SQP:CreateStyledSlider(leftColumn, {
+        key = "killAnimationIntensity",
+        label = "Intensity",
+        min = 25,
+        max = 200,
+        step = 5,
+        default = 100,
+        storage = SQPSettings,
+        width = 160,
+        suffix = "%%",
+        onChange = function(val)
+            if SQP.previewFrame and SQP.previewFrame.activateKillMode then
+                SQP.previewFrame.activateKillMode()
+            end
+            SQP:RefreshAllNameplates()
+        end,
+    })
+    killAnimIntensitySlider:SetPoint("TOPLEFT", 20, yOffset)
+    self.optionControls.killAnimationIntensity = killAnimIntensitySlider
+    self.optionControls.killAnimationIntensityLabel = killAnimIntensitySlider.valueLabel
+    yOffset = yOffset - 38
+
+    -- Kill Color
+    local colorHeader = leftColumn:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+    SQP:ApplyDefaultFont(colorHeader)
+    colorHeader:SetPoint("TOPLEFT", 20, yOffset)
+    colorHeader:SetText("|cff58be81Color|r")
+    yOffset = yOffset - 16
+
+    local killDefault = {1, 0.82, 0}
+    local colorBtn = CreateFrame("Button", nil, leftColumn)
+    colorBtn:SetSize(20, 20)
+    colorBtn:SetPoint("TOPLEFT", 20, yOffset)
+    local cbg = colorBtn:CreateTexture(nil, "BACKGROUND")
+    cbg:SetAllPoints(); cbg:SetColorTexture(0, 0, 0, 1)
+    local sw = colorBtn:CreateTexture(nil, "ARTWORK")
+    sw:SetSize(16, 16); sw:SetPoint("CENTER")
+    sw:SetColorTexture(unpack(SQPSettings.killColor or killDefault))
+    SQP.optionControls.killColorSwatch = sw
+
+    local colorLbl = leftColumn:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+    SQP:ApplyDefaultFont(colorLbl)
+    colorLbl:SetPoint("LEFT", colorBtn, "RIGHT", 6, 0)
+    colorLbl:SetText("Kill Color")
+
+    local colorReset = self:CreateInlineResetButton(leftColumn, function()
+        SQP:SetSetting('killColor', {unpack(killDefault)})
+        sw:SetColorTexture(unpack(killDefault)); SQP:RefreshAllNameplates()
+    end)
+    colorReset:SetPoint("LEFT", colorLbl, "RIGHT", 5, 0)
+
+    colorBtn:SetScript("OnClick", function()
+        ActivateKill()
+        local r, g, b = unpack(SQPSettings.killColor or killDefault)
+        local info = {r = r, g = g, b = b, hasOpacity = false}
+        info.swatchFunc = function()
+            local nr, ng, nb = ColorPickerFrame:GetColorRGB()
+            SQP:SetSetting('killColor', {nr, ng, nb}); sw:SetColorTexture(nr, ng, nb)
+            SQP:RefreshAllNameplates()
+        end
+        info.cancelFunc = function()
+            SQP:SetSetting('killColor', {r, g, b}); sw:SetColorTexture(r, g, b)
+            SQP:RefreshAllNameplates()
+        end
+        ColorPickerFrame:SetupColorPickerAndShow(info)
+    end)
+    yOffset = yOffset - 28
+
+    -- Kill Icon Tinting (mini icon, compact inline row)
+    yOffset = self:CreateMiniIconTintSection(leftColumn, "kill", ActivateKill, yOffset)
+
+    -- â”€â”€ RIGHT COLUMN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    local rightYOffset = -12
+
+    local posHeader = rightColumn:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+    SQP:ApplyDefaultFont(posHeader)
+    posHeader:SetPoint("TOPLEFT", 20, rightYOffset)
+    posHeader:SetText("|cff58be81Size & Position|r")
+    rightYOffset = rightYOffset - 16
+
+    rightYOffset = MakeSlider(rightColumn, "Size",     "killIconSize",    14,  8,   40, rightYOffset)
+    rightYOffset = MakeSlider(rightColumn, "Offset X", "killIconOffsetX",  2, -80,  80, rightYOffset)
+    rightYOffset = MakeSlider(rightColumn, "Offset Y", "killIconOffsetY", 15, -80,  80, rightYOffset)
+
+    rightYOffset = self:CreateIconSideSection(rightColumn, "kill", ActivateKill, rightYOffset)
+
+    -- Reset this tab to kill defaults
+    rightYOffset = rightYOffset - 14
+    local resetBtn = self:CreateStyledButton(rightColumn, "Reset Kill Settings", 150, 22)
+    resetBtn:SetPoint("TOPLEFT", 20, rightYOffset)
+    resetBtn:SetScript("OnClick", function()
+        local D = SQP.DEFAULTS
+        local oc = SQP.optionControls
+        SQP:SetSetting('showKillIcon',      D.showKillIcon)
+        SQP:SetSetting('killShowIconBackground', D.killShowIconBackground)
+        SQP:SetSetting('animateQuestIcons', D.animateQuestIcons)
+        SQP:SetSetting('killAnimateMain',   D.killAnimateMain)
+        SQP:SetSetting('killAnimationIntensity', D.killAnimationIntensity)
+        SQP:SetSetting('killColor',         {unpack(D.killColor)})
+        SQP:SetSetting('killTintIcon',      D.killTintIcon)
+        SQP:SetSetting('killTintIconColor', {unpack(D.killTintIconColor)})
+        SQP:SetSetting('killFontSize',      D.killFontSize)
+        SQP:SetSetting('killFontFamily',    D.killFontFamily)
+        SQP:SetSetting('killIconSide',      D.killIconSide)
+        if oc.killIconSideSideUpdater then oc.killIconSideSideUpdater() end
+        -- Update checkboxes
+        if oc.showKillIcon      then oc.showKillIcon:SetChecked(D.showKillIcon) end
+        if oc.killShowIconBackgroundStyleUpdater then oc.killShowIconBackgroundStyleUpdater() end
+        if oc.animateQuestIcons then oc.animateQuestIcons:SetChecked(D.animateQuestIcons) end
+        if oc.animateQuestIconsLoot then oc.animateQuestIconsLoot:SetChecked(D.animateQuestIcons) end
+        if oc.animateQuestIconsPercent then oc.animateQuestIconsPercent:SetChecked(D.animateQuestIcons) end
+        if oc.killAnimateMain   then oc.killAnimateMain:SetChecked(D.killAnimateMain) end
+        if oc.killAnimationIntensity and oc.killAnimationIntensity.Reset then
+            oc.killAnimationIntensity:Reset()
+        end
+        if oc.killTintIcon      then oc.killTintIcon:SetChecked(D.killTintIcon) end
+        -- Update color swatches
+        if oc.killColorSwatch              then oc.killColorSwatch:SetColorTexture(unpack(D.killColor)) end
+        if oc.killTintIconColorSwatch      then oc.killTintIconColorSwatch:SetColorTexture(unpack(D.killTintIconColor)) end
+        if oc.killTintIconAlphaUpdate      then oc.killTintIconAlphaUpdate() end
+        -- Update sliders (OnValueChanged fires and updates label + setting)
+        if oc.killIconSize    then oc.killIconSize:SetValue(D.killIconSize) end
+        if oc.killIconOffsetX then oc.killIconOffsetX:SetValue(D.killIconOffsetX) end
+        if oc.killIconOffsetY then oc.killIconOffsetY:SetValue(D.killIconOffsetY) end
+        if oc.killFontSize    then oc.killFontSize:SetValue(D.killFontSize) end
+        if oc.killFontFamily and type(oc.killFontFamily.Reset) == "function" then
+            oc.killFontFamily:Reset()
+        elseif oc.killFontFamily and type(oc.killFontFamily.SetPath) == "function" then
+            oc.killFontFamily:SetPath(D.killFontFamily)
+        elseif oc.killFontFamily and UIDropDownMenu_SetText then
+            UIDropDownMenu_SetText(oc.killFontFamily, "Friz Quadrata")
+        end
+        SQP:RefreshAllNameplates()
+        ActivateKill()
+    end)
+end

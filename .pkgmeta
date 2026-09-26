@@ -1,0 +1,18 @@
+package-as: SQP_Forever
+
+enable-nolib-creation: no
+
+ignore:
+  - .github
+  - .gitignore
+  - README.md
+  - .pkgmeta
+
+plain-copy:
+  - LICENSE
+
+manual-changelog:
+  filename: docs/CHANGES.md
+  markup-type: markdown
+
+license-output: LICENSE
