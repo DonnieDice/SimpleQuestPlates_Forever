@@ -11,6 +11,7 @@ Image assets used by the addon and repository docs.
 - `image.png` - Additional documentation/screenshot asset
 - `image2.png` - Additional documentation/screenshot asset
 - `image3.png` - Additional documentation/screenshot asset
+- `image4.png` - In-game quest-plate screenshot (Tirisfal Farmhand quest counts) used in docs
 
 ## Notes
 
