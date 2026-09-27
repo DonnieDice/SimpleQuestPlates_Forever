@@ -515,10 +515,10 @@ function SQP:OnPlateShow(nameplate, unitID)
 
     self:UpdateQuestIcon(nameplate, unitID)
 
-    -- Targeting a fresh plate shows Blizzard's selection highlight again
-    if SQPSettings.showTargetGlow == false then
-        RGX:After(0, function() self:ApplyTargetGlow(nameplate) end, "SQP target glow")
-    end
+    -- Target glow is retired (see core.lua showTargetGlow): Blizzard's
+    -- selection highlight is intentionally left untouched. The previous timer
+    -- called a removed ApplyTargetGlow helper and errored when the retired
+    -- setting was false.
 
     -- Recheck shortly after show to allow tooltip data to populate
     local plateRef = nameplate
