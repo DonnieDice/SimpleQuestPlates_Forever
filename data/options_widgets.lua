@@ -21,7 +21,7 @@ function SQP:ApplyDefaultFont(fontString)
     end)
 end
 
--- Create custom styled button â€” delegates to RGXDesign via RGXUI
+-- Create custom styled button - delegates to RGXDesign via RGXUI
 function SQP:CreateStyledButton(parent, text, width, height)
     local UI = _G.RGXUI
     if UI and type(UI.CreateButton) == "function" then
@@ -33,7 +33,7 @@ function SQP:CreateStyledButton(parent, text, width, height)
     return button
 end
 
--- Create compact inline reset button â€” delegates to RGXUI
+-- Create compact inline reset button - delegates to RGXUI
 function SQP:CreateInlineResetButton(parent, onClickFn)
     local UI = _G.RGXUI
     if UI and type(UI.CreateResetButton) == "function" then
@@ -41,7 +41,7 @@ function SQP:CreateInlineResetButton(parent, onClickFn)
     end
     local btn = CreateFrame("Button", nil, parent)
     btn:SetSize(20, 16)
-    local lbl = btn:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    local lbl = btn:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     SQP:ApplyDefaultFont(lbl)
     lbl:SetAllPoints()
     lbl:SetJustifyH("CENTER")
@@ -54,7 +54,7 @@ function SQP:CreateInlineResetButton(parent, onClickFn)
     return btn
 end
 
--- Create custom styled slider â€” delegates to RGXUI
+-- Create custom styled slider - delegates to RGXUI
 function SQP:CreateStyledSlider(parent, options)
 	local UI = _G.RGXUI
 	if UI and type(UI.CreateSlider) == "function" then
@@ -90,6 +90,18 @@ function SQP:SetControlTooltip(widget, text)
     end)
 end
 
+-- Re-apply font settings to live nameplate texts and the preview after a
+-- font size or family change. activatePreviewFn: optional preview mode switch.
+function SQP:RefreshFontDisplays(activatePreviewFn)
+    if type(activatePreviewFn) == "function" then
+        pcall(activatePreviewFn)
+    end
+    SQP:RefreshAllNameplates()
+    if SQP.previewFrame and type(SQP.previewFrame.UpdatePreview) == "function" then
+        pcall(function() SQP.previewFrame:UpdatePreview() end)
+    end
+end
+
 -- Create a font settings section (size + family)
 -- typeKey: "kill", "loot", or "percent" for per-type overrides; nil for the
 -- global nameplate font (shared settings). Per-type sections inherit the
@@ -108,15 +120,17 @@ function SQP:CreateFontSection(parent, typeKey, yOffset, activatePreviewFn)
     local effectiveFamily = SQPSettings[familyKey] or SQPSettings.fontFamily
     local defaultName = Fonts:ResolveName(effectiveFamily, Fonts:GetDefault()) or Fonts:GetDefault()
 
-    -- Section header
-    local fontHeader = parent:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    fontHeader:SetPoint("TOPLEFT", 20, yOffset)
-    fontHeader:SetText("|cff58be81" .. (self.L["OPTIONS_FONT"] or "Font") .. "|r")
-    fontHeader:SetFontObject(GameFontNormalSmall)
-    SQP:ApplyDefaultFont(fontHeader)
-    yOffset = yOffset - 18
+    -- The Global card already supplies the Font header. Standalone per-type
+    -- sections still need their own heading.
+    if typeKey then
+        local fontHeader = parent:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+        fontHeader:SetPoint("TOPLEFT", 20, yOffset)
+        fontHeader:SetText("|cff58be81" .. (self.L["OPTIONS_FONT"] or "Font") .. "|r")
+        SQP:ApplyDefaultFont(fontHeader)
+        yOffset = yOffset - 18
+    end
 
-	-- â”€â”€ Font Size â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+	-- == Font Size ==========================================================
 	local curSize = SQPSettings[sizeKey] or defaultSize
 	local sizeSlider = self:CreateStyledSlider(parent, {
 		key = sizeKey,
@@ -132,26 +146,28 @@ function SQP:CreateFontSection(parent, typeKey, yOffset, activatePreviewFn)
 		end,
 	})
 	sizeSlider:SetPoint("TOPLEFT", 20, yOffset)
+	sizeSlider:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -20, yOffset)
 	self.optionControls[sizeKey] = sizeSlider
 
 	yOffset = yOffset - 38
 
-    -- â”€â”€ Font Family â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    local familyLabel = parent:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+    -- == Font Family ========================================================
+    local familyLabel = parent:CreateFontString(nil, "ARTWORK", "GameFontNormal")
     familyLabel:SetPoint("TOPLEFT", 20, yOffset)
     familyLabel:SetText("Family")
     SQP:ApplyDefaultFont(familyLabel)
-    local familyReset = self:CreateInlineResetButton(parent, function()
-        local control = self.optionControls[familyKey]
-        if control then control:Reset() end
-    end)
-    familyReset:SetPoint("LEFT", familyLabel, "RIGHT", 5, 0)
+    familyLabel:SetTextColor(0.345, 0.745, 0.506)
     yOffset = yOffset - 20
 
     local fontControl = Fonts:CreateFontSettingControl(parent, {
         width = 210,
         buttonWidth = 160,
-        showReset = false,
+        fill = true,
+        height = 36,
+        dropdownHeight = 36,
+        label = "",
+        triggerStyle = "retail",
+        showReset = true,
         storage = SQPSettings,
         key = familyKey,
         defaultName = defaultName,
@@ -165,6 +181,7 @@ function SQP:CreateFontSection(parent, typeKey, yOffset, activatePreviewFn)
         end,
     })
     fontControl:SetPoint("TOPLEFT", 20, yOffset)
+    fontControl:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -40, yOffset)
     self.optionControls[familyKey] = fontControl
 
     yOffset = yOffset - 30
@@ -191,14 +208,15 @@ function SQP:CreateDisplayStyleSection(parent, typeKey, activatePreviewFn, yOffs
 
     local dsHeader = parent:CreateFontString(nil, "ARTWORK", "GameFontNormal")
     SQP:ApplyDefaultFont(dsHeader)
-    dsHeader:SetPoint("TOPLEFT", 20, yOffset)
+    dsHeader:SetPoint("TOPLEFT", 8, yOffset)
     dsHeader:SetText("|cff58be81Display Style|r")
-    dsHeader:SetFontObject(GameFontNormalSmall)
+    dsHeader:SetFontObject(GameFontNormal)
+    dsHeader:SetTextColor(0.345, 0.745, 0.506)
     yOffset = yOffset - 18
 
     local iconStyleBtn = self:CreateStyledButton(parent, "Icon", 68, 22)
     local textStyleBtn = self:CreateStyledButton(parent, "Text", 68, 22)
-    iconStyleBtn:SetPoint("TOPLEFT", 20, yOffset)
+    iconStyleBtn:SetPoint("TOPLEFT", parent, "TOP", -72, yOffset - 2)
     textStyleBtn:SetPoint("LEFT", iconStyleBtn, "RIGHT", 8, 0)
 
     local function IsIconStyleEnabled()
@@ -252,7 +270,7 @@ function SQP:CreateDisplayStyleSection(parent, typeKey, activatePreviewFn, yOffs
 end
 
 -- Create a per-type mini icon tint section (kill or loot task icons)
--- Compact single-row: [Swatch] [â˜‘ Tint Icon] [Reset]
+-- Compact single-row: [Swatch] [Tint Icon] [Reset]
 -- typeKey: "kill" or "loot"
 -- returns: next yOffset
 function SQP:CreateMiniIconTintSection(parent, typeKey, activatePreviewFn, yOffset)
@@ -270,7 +288,7 @@ function SQP:CreateMiniIconTintSection(parent, typeKey, activatePreviewFn, yOffs
     -- Color swatch button (also acts as color picker opener)
     local tintColorBtn = CreateFrame("Button", nil, parent)
     tintColorBtn:SetSize(20, 20)
-    tintColorBtn:SetPoint("TOPLEFT", 20, yOffset)
+    tintColorBtn:SetPoint("TOPLEFT", 8, yOffset)
     local tintBg = tintColorBtn:CreateTexture(nil, "BACKGROUND")
     tintBg:SetAllPoints(); tintBg:SetColorTexture(0, 0, 0, 1)
     local tintSw = tintColorBtn:CreateTexture(nil, "ARTWORK")
@@ -280,6 +298,7 @@ function SQP:CreateMiniIconTintSection(parent, typeKey, activatePreviewFn, yOffs
     -- Checkbox + label inline with swatch
     local tintCbFrame = self:CreateStyledCheckbox(parent, labelText)
     tintCbFrame:SetPoint("LEFT", tintColorBtn, "RIGHT", 6, 0)
+    tintCbFrame:SetWidth(tintCbFrame.label:GetStringWidth() + 24)
     tintCbFrame.checkbox:SetChecked(SQPSettings[tintKey] == true)
     self.optionControls[tintKey] = tintCbFrame.checkbox
 
@@ -289,7 +308,9 @@ function SQP:CreateMiniIconTintSection(parent, typeKey, activatePreviewFn, yOffs
         if activatePreviewFn then activatePreviewFn() end
         SQP:RefreshAllNameplates()
     end)
-    tintReset:SetPoint("LEFT", tintCbFrame.label, "RIGHT", 6, 2)
+    tintReset:ClearAllPoints()
+    tintReset:SetPoint("TOP", tintColorBtn, "TOP", 0, 0)
+    tintReset:SetPoint("RIGHT", parent, "RIGHT", -8, 0)
 
     local function UpdateTintAlpha()
         local a = SQPSettings[tintKey] == true and 1 or 0.4
@@ -341,7 +362,7 @@ function SQP:CreateMainIconSection(parent, typeKey, activatePreviewFn, yOffset, 
     SQP:ApplyDefaultFont(header)
     header:SetPoint("TOPLEFT", 20, yOffset)
     header:SetText("|cff58be81Main Icon|r")
-    header:SetFontObject(GameFontNormalSmall)
+    header:SetFontObject(GameFontNormal)
     yOffset = yOffset - 18
 
     -- Animate Main Icon checkbox (skip if tab already exposes it in its own Animate section)
@@ -357,7 +378,7 @@ function SQP:CreateMainIconSection(parent, typeKey, activatePreviewFn, yOffset, 
         yOffset = yOffset - 26
     end
 
-    -- Inline tint row: [Swatch] [â˜‘ Tint Main Icon] [Reset]
+    -- Inline tint row: [Swatch] [Tint Main Icon] [Reset]
     local tintColorBtn = CreateFrame("Button", nil, parent)
     tintColorBtn:SetSize(20, 20)
     tintColorBtn:SetPoint("TOPLEFT", 20, yOffset)
@@ -413,54 +434,72 @@ end
 
 -- Create custom checkbox
 function SQP:CreateStyledCheckbox(parent, text)
-    local frame = CreateFrame("Frame", nil, parent)
-    frame:SetSize(300, 20)
-
-    local checkbox = CreateFrame("CheckButton", nil, frame)
-    checkbox:SetSize(18, 18)
-    checkbox:SetPoint("LEFT", 0, 0)
-
-    checkbox:SetNormalTexture("Interface\\Buttons\\UI-CheckBox-Up")
-    checkbox:SetPushedTexture("Interface\\Buttons\\UI-CheckBox-Down")
-    checkbox:SetHighlightTexture("Interface\\Buttons\\UI-CheckBox-Highlight")
-    checkbox:SetCheckedTexture("Interface\\Buttons\\UI-CheckBox-Check")
-
-    local label = frame:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
-    SQP:ApplyDefaultFont(label)
-    do
-        local Fonts = _G.RGXFonts
-        if Fonts and type(Fonts.Apply) == "function" and type(Fonts.GetDefault) == "function" then
-            local _, size, flags = label:GetFont()
-            pcall(Fonts.Apply, Fonts, label, Fonts:GetDefault(), size, flags)
-        end
-    end
-    label:SetPoint("LEFT", checkbox, "RIGHT", 5, 0)
-    label:SetText(text)
-
-    frame.checkbox = checkbox
-    frame.label = label
-
+    local UI = assert(_G.RGXUI, "SQP: RGXUI unavailable")
+    local frame = UI:CreateCheckbox(parent, text)
+    SQP:ApplyDefaultFont(frame.label)
     return frame
 end
 
--- Create centered two-column layout for an options page. Delegates to the
--- framework's shared column system when available (RGX-Framework >= 2.7.9)
--- so every RGX addon's option pages center the same way.
-function SQP:CreateOptionColumns(content, colWidth, gap)
-    local UI = _G.RGXUI
-    if UI and type(UI.CreateColumns) == "function" then
-        return UI:CreateColumns(content, 2, { colWidth = colWidth, gap = gap })
+-- Plain columns; CreateCard supplies the only section border.
+function SQP:CreateOptionColumns(content, colWidth, gap, titles)
+    local UI = assert(_G.RGXUI, "SQP: RGXUI unavailable")
+    return UI:CreateColumns(content, 2, { colWidth = colWidth, gap = gap or 8, titles = titles, card = false })
+end
+
+-- Section card with optional above-chaining; built on the framework section
+-- factory so every options card uses the same skin.
+function SQP:CreateCard(host, title, opts)
+    opts = opts or {}
+    local UI = assert(_G.RGXUI, "SQP: RGXUI unavailable")
+    local frame = UI:CreateCard(host, { title = title, height = 200 })
+    frame:ClearAllPoints()
+    if opts.above then
+        frame:SetPoint("TOPLEFT", opts.above, "BOTTOMLEFT", 0, -8)
+        frame:SetPoint("TOPRIGHT", opts.above, "BOTTOMRIGHT", 0, -8)
+    else
+        frame:SetPoint("TOPLEFT", host, "TOPLEFT", 0, 0)
+        frame:SetPoint("TOPRIGHT", host, "TOPRIGHT", 0, 0)
     end
-    -- Fallback: legacy flush-left/right columns
-    local leftColumn = CreateFrame("Frame", nil, content)
-    leftColumn:SetPoint("TOPLEFT")
-    leftColumn:SetPoint("BOTTOMLEFT")
-    leftColumn:SetWidth(colWidth or 288)
-    local rightColumn = CreateFrame("Frame", nil, content)
-    rightColumn:SetPoint("TOPRIGHT")
-    rightColumn:SetPoint("BOTTOMRIGHT")
-    rightColumn:SetPoint("LEFT", leftColumn, "RIGHT", gap or 14, 0)
-    return leftColumn, rightColumn
+    return frame
+end
+
+-- BLU-style paged tab content (framework pager). Returns the pager object
+-- and the list of page host frames; only page 1 is shown initially. Tabs
+-- build their content into pager.frames[i]. opts.pageNames (array of label
+-- strings) replaces the plain "Page X of Y" readout with the page name.
+-- A pager-less fallback still returns pageCount hosts so page content can
+-- be built into each.
+function SQP:CreatePagedContent(content, pageCount, opts)
+    local UI = _G.RGXUI
+    if UI and type(UI.CreatePager) == "function" then
+        local pager = UI:CreatePager(content, {
+            pages = pageCount,
+            startPage = opts and opts.startPage,
+            onPageChanged = opts and opts.onPageChanged,
+        })
+        local names = opts and opts.pageNames
+        if names and pager.label and pager.pageCount > 1 then
+            local origSetPage = pager.SetPage
+            pager.SetPage = function(self, n)
+                origSetPage(self, n)
+                local name = names[self.page]
+                if name then
+                    self.label:SetText(string.format("%s  (%d/%d)", name, self.page, self.pageCount))
+                end
+            end
+            pager:SetPage(pager.page)
+        end
+        return pager, pager.frames
+    end
+    -- Fallback: plain page hosts without pager chrome
+    local frames = {}
+    for i = 1, pageCount do
+        local host = CreateFrame("Frame", nil, content)
+        host:SetAllPoints()
+        host:SetShown(i == 1)
+        frames[i] = host
+    end
+    return nil, frames
 end
 
 -- Per-type task icon side section (kill / loot): Left / Right buttons
@@ -471,7 +510,7 @@ function SQP:CreateIconSideSection(parent, typeKey, activatePreviewFn, yOffset)
     local defaultSide = (typeKey == "kill") and "left" or "right"
     local labelText = (typeKey == "kill") and "Kill Icon Side" or "Loot Icon Side"
 
-    local sideHeader = parent:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+    local sideHeader = parent:CreateFontString(nil, "ARTWORK", "GameFontNormal")
     SQP:ApplyDefaultFont(sideHeader)
     sideHeader:SetPoint("TOPLEFT", 20, yOffset)
     sideHeader:SetText("|cff58be81" .. labelText .. "|r")
@@ -479,7 +518,7 @@ function SQP:CreateIconSideSection(parent, typeKey, activatePreviewFn, yOffset)
 
     local leftSideBtn = self:CreateStyledButton(parent, "Left", 64, 20)
     local rightSideBtn = self:CreateStyledButton(parent, "Right", 64, 20)
-    leftSideBtn:SetPoint("TOPLEFT", 20, yOffset)
+    leftSideBtn:SetPoint("TOPLEFT", parent, "TOP", -67, yOffset)
     rightSideBtn:SetPoint("LEFT", leftSideBtn, "RIGHT", 6, 0)
 
     local function UpdateSideButtons()

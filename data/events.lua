@@ -23,6 +23,11 @@ function SQP:ADDON_LOADED(addon)
     if addon ~= addonName then return end
     
     self:LoadSettings()
+    -- Adopt the client-loaded SavedVariables into the database before use:
+    -- the DB was constructed at file load, before SVs deserialized.
+    if self.db and type(self.db.Adopt) == "function" then
+        pcall(function() self.db:Adopt() end)
+    end
     self:MigrateLegacyFontDefaults()
     TryInitializeUI()
     
@@ -47,6 +52,11 @@ function SQP:PLAYER_LOGIN()
     
     -- Framework-driven UI bootstrap
     TryInitializeUI()
+    -- Register the options category on login, before a minimap or slash click.
+    -- The framework builds visible tab content when the panel is first opened.
+    if not self.optionsPanel and type(self.CreateOptionsPanel) == "function" then
+        self:CreateOptionsPanel()
+    end
     
     -- Load world quests
     self:LoadWorldQuests()
