@@ -424,8 +424,8 @@ function SQP:CreateLayoutOptions(content)
 
     local yOffset = -32
     yOffset = CreateCompactSlider(globalSection, "Global scale", "scale", 1.1, 0.5, 3.0, 0.1, yOffset, nil)
-    yOffset = CreateCompactSlider(globalSection, "Main anchor offset X", "offsetX", 0, -100, 100, 1, yOffset, nil)
-    yOffset = CreateCompactSlider(globalSection, "Main anchor offset Y", "offsetY", 3, -100, 100, 1, yOffset, nil)
+    yOffset = CreateCompactSlider(globalSection, "Main anchor offset X", "offsetX", 16, -100, 100, 1, yOffset, nil)
+    yOffset = CreateCompactSlider(globalSection, "Main anchor offset Y", "offsetY", -4, -100, 100, 1, yOffset, nil)
 
     local anchorLabel = globalSection:CreateFontString(nil, "ARTWORK", "GameFontNormal")
     SQP:ApplyDefaultFont(anchorLabel)
