@@ -134,28 +134,28 @@ function SQP:UpdateUnifiedChip(questFrame)
     chip:Show()
 end
 
--- Quest display glow (our texture addition — a soft accent frame around the
--- quest indicator. This never touches Blizzard's own selection highlight).
-function SQP:ApplyQuestGlow(questFrame)
-    local glow = questFrame and questFrame.questGlow
-    if not glow then return end
-    local show = (SQPSettings.showQuestGlow ~= false) and questFrame:IsShown()
-    glow:SetShown(show and true or false)
-end
-
--- Play all pulses on a plate in phase: stop them all, then start them all in
--- the same tick so the main/kill/loot animations move together.
+-- Synchronize only enabled, playing pulses. A refresh must not continually
+-- restart them or re-enable a pulse the user has turned off.
 function SQP:SyncQuestPulses(questFrame)
     if not questFrame then return end
     local pulses = { questFrame.iconPulse, questFrame.percentPulse,
         questFrame.percentOutlinePulse, questFrame.killIconPulse, questFrame.lootIconPulse }
-    for _, p in ipairs(pulses) do
-        if p and p.Stop then p:Stop() end
+    local active, signature = {}, {}
+    for i, p in ipairs(pulses) do
+        if p and p:IsPlaying() then
+            active[#active + 1] = p
+            signature[#signature + 1] = i .. ":" .. tostring(p._pulseDuration)
+        end
     end
-    for _, p in ipairs(pulses) do
-        local region = p and p.GetParent and p:GetParent()
-        if p and region and region.IsShown and region:IsShown() then p:Play() end
-    end
+    local key = table.concat(signature, ",")
+    if questFrame._pulseSyncSignature == key then return end
+    questFrame._pulseSyncSignature = key
+    for _, p in ipairs(active) do p:Stop() end
+    for _, p in ipairs(active) do p:Play() end
+end
+
+function SQP:ClearQuestPulseSync(questFrame)
+    if questFrame then questFrame._pulseSyncSignature = nil end
 end
 
 -- Nameplate storage
@@ -254,17 +254,6 @@ function SQP:CreateQuestPlate(nameplate)
     )
     questFrame._anchorTarget = anchorTarget
     questFrame.icon = icon
-
-    -- Quest display glow: soft accent frame hugging the quest indicator
-    -- (our texture addition; not Blizzard's selection highlight).
-    local questGlow = CreateFrame("Frame", nil, questFrame, "BackdropTemplate")
-    questGlow:SetPoint("TOPLEFT", icon, "TOPLEFT", -3, 3)
-    questGlow:SetPoint("BOTTOMRIGHT", icon, "BOTTOMRIGHT", 3, -3)
-    questGlow:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 1 })
-    questGlow:SetBackdropBorderColor(1, 0.82, 0, 0.55)
-    questGlow:EnableMouse(false)
-    questGlow:Hide()
-    questFrame.questGlow = questGlow
 
     -- Dramatic pulse for main quest icon (more noticeable)
     local function CreateMainPulse(region)
@@ -401,7 +390,7 @@ function SQP:CreateQuestPlate(nameplate)
     qmark:SetAlpha(0)
     questFrame.qmark = qmark
     
-    local duration = 1
+    local duration = SQPSettings.toastDuration or 1
     local group = qmark:CreateAnimationGroup()
     local alpha = group:CreateAnimation('Alpha')
     alpha:SetOrder(1)
@@ -411,7 +400,7 @@ function SQP:CreateQuestPlate(nameplate)
     
     local translation = group:CreateAnimation('Translation')
     translation:SetOrder(1)
-    translation:SetOffset(0, 20)
+    translation:SetOffset(0, SQPSettings.toastHeight or 20)
     translation:SetDuration(duration)
     translation:SetSmoothing('OUT')
     
@@ -430,7 +419,6 @@ function SQP:CreateQuestPlate(nameplate)
         else
             qmark:SetAlpha(0)
         end
-        SQP:ApplyQuestGlow(self)
         if SQPSettings.syncAnimations then
             SQP:SyncQuestPulses(self)
         end
@@ -460,15 +448,16 @@ function SQP:EnsureQuestPlate(nameplate)
     self:RefreshQuestPlateAnchor(nameplate)
 end
 
--- Re-anchor the quest icon when its anchor target frame was replaced
-function SQP:RefreshQuestPlateAnchor(nameplate)
+-- Only our own icon is re-anchored. Blizzard restricts GetLeft/GetTop on
+-- nameplate regions, so live plates must not inspect their geometry.
+function SQP:RefreshQuestPlateAnchor(nameplate, force)
     local questFrame = self.QuestPlates[nameplate]
     if not questFrame or not questFrame.icon then
         return
     end
 
     local target = self:GetPlateAnchorTarget(nameplate)
-    if questFrame._anchorTarget ~= target then
+    if force or questFrame._anchorTarget ~= target then
         questFrame.icon:ClearAllPoints()
         questFrame.icon:SetPoint(
             SQPSettings.anchor or 'RIGHT',
@@ -635,17 +624,8 @@ function SQP:RefreshAllNameplates()
                 return value ~= false
             end
 
-            questFrame.icon:ClearAllPoints()
-            local refreshTarget = self:GetPlateAnchorTarget(plate)
-            questFrame.icon:SetPoint(
-                SQPSettings.anchor or 'RIGHT',
-                refreshTarget,
-                SQPSettings.relativeTo or 'LEFT',
-                SQPSettings.offsetX or 0,
-                SQPSettings.offsetY or 0
-            )
-            questFrame._anchorTarget = refreshTarget
             questFrame:SetScale(SQPSettings.scale or 1)
+            self:RefreshQuestPlateAnchor(plate, true)
 
             if questFrame.qmark then
                 local qms = SQPSettings.questMarkerSize or 28

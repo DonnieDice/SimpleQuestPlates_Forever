@@ -114,7 +114,7 @@ end
 SQP.DEFAULTS = {
     enabled = true,
     scale = 1.1,
-    offsetX = 0,
+    offsetX = 30,
     offsetY = 0,
     anchor = "RIGHT",
     relativeTo = "LEFT",
@@ -135,13 +135,13 @@ SQP.DEFAULTS = {
     fontOutline = "",            -- No outline by default
     outlineWidth = 0,
     fontSize = 12,
-    fontFamily = "Inter-Regular", -- RGX framework default font (RGXFonts)
+    fontFamily = "FrizQuadrata", -- RGX framework default font (RGXFonts)
     outlineColor = {0, 0, 0},
     outlineAlpha = 0,
     showMessages = true,
     showKillIcon = true,
     showLootIcon = true,
-    showPercentIcon = true,
+    showPercentIcon = false,
     -- Per-type fonts (kill/loot/percent) inherit the global font settings by
     -- default; per-type keys only exist once a user overrides them on the
     -- Kill / Loot / Percent tabs.
@@ -151,10 +151,12 @@ SQP.DEFAULTS = {
     killIconSide = "left",           -- kill task icon badge side: left | right
     lootIconSide = "right",          -- loot task icon badge side: left | right
     showTargetGlow = true,           -- (retired: never touch Blizzard's selection highlight)
-    showQuestGlow = true,            -- SQP quest display glow (our texture addition)
-    syncAnimations = false,          -- play all task/main pulses in phase
+    syncAnimations = false,
+    toastDuration = 1.0,
+    toastHeight = 20,          -- play all task/main pulses in phase
     animateQuestIcon = false,
     animateQuestIcons = true,
+    animateMainIcons = false, -- Global main-icon option; per-type toggles apply when off
     useGlobalAnimationSettings = false,
     globalAnimationEnabled = true,
     animationCombatMode = "always", -- always | combat | outofcombat
@@ -172,7 +174,7 @@ SQP.DEFAULTS = {
     lootIconOffsetY = 16,
     percentIconOffsetX = 18,
     percentIconOffsetY = 0,
-    killIconSize = 14,
+    killIconSize = 12,
     lootIconSize = 14,
     percentIconSize = 8,
     iconTintMain = false,
@@ -231,7 +233,7 @@ function SQP:IsAnimationEnabled(typeKey, isTaskIcon)
     elseif isTaskIcon then
         baseEnabled = settings.animateQuestIcons == true
     elseif typeKey and typeKey ~= "" then
-        baseEnabled = settings[typeKey .. "AnimateMain"] == true
+        baseEnabled = settings.animateMainIcons == true or settings[typeKey .. "AnimateMain"] == true
     end
 
     if not baseEnabled then
@@ -245,7 +247,7 @@ function SQP:GetAnimationIntensity(typeKey)
     local settings = SQPSettings or self.DEFAULTS or {}
     local intensity
 
-    if settings.useGlobalAnimationSettings == true then
+    if settings.useGlobalAnimationSettings == true or settings.syncAnimations == true then
         intensity = settings.globalAnimationIntensity
     elseif typeKey and typeKey ~= "" then
         intensity = settings[typeKey .. "AnimationIntensity"]
@@ -262,7 +264,7 @@ function SQP:GetAnimationIntensity(typeKey)
 end
 
 function SQP:GetAnimationDuration(typeKey, isMain)
-    local baseDuration = isMain and 0.5 or 0.6
+    local baseDuration = SQPSettings and SQPSettings.syncAnimations and 0.6 or (isMain and 0.5 or 0.6)
     local intensity = self:GetAnimationIntensity(typeKey)
     local duration = baseDuration * (100 / intensity)
     if duration < 0.15 then duration = 0.15 end
@@ -272,6 +274,8 @@ end
 
 function SQP:ApplyPulseDuration(animationGroup, duration)
     if not animationGroup or not duration then return end
+    if animationGroup._pulseDuration == duration then return end
+    animationGroup._pulseDuration = duration
 
     if animationGroup._fadeOut and animationGroup._fadeOut.SetDuration then
         animationGroup._fadeOut:SetDuration(duration)
@@ -363,7 +367,7 @@ SQP.SOUND_KIT_ID_QUEST_ACCEPT = 815 -- UI_QuestLog_QuestAccepted
 -- Constants for UI
 SQP.PANEL_WIDTH = 700
 SQP.PANEL_HEIGHT = 600
-SQP.PANEL_NAME = format("|TInterface\\AddOns\\%s\\media\\logo.tga:16:16:0:0|t |cff58be81S|r|cffffffffimple|r |cff58be81Q|r|cffffffffuest|r |cff58be81P|r|cfffffffflates|r|cff58be81!|r", addonName)
+SQP.PANEL_NAME = format("|T%s:16:16:0:0|t %s", SQP.ICON_TEXTURE, SQP.NAME)
 SQP.SECTION_COLOR = { r = 0.58, g = 0.79, b = 1, a = 1 } -- RGX Blue
 SQP.BACKDROP_DARK = {
     bgFile = "Interface/Tooltips/UI-Tooltip-Background",
@@ -444,8 +448,11 @@ end
 -- Reset settings to default
 function SQP:ResetSettings()
 	-- Reset to defaults via database
-	for k in pairs(SQPSettings) do
-		SQPSettings[k] = nil
+	local profile = self.db and type(self.db.GetProfile) == "function" and self.db:GetProfile() or nil
+	if type(profile) == "table" then
+		for k in pairs(profile) do
+			profile[k] = nil
+		end
 	end
 	for k, v in pairs(self.DEFAULTS) do
 		SQPSettings[k] = v
@@ -480,18 +487,18 @@ function SQP:SetupMinimapButton()
         angleKey     = "minimapAngle",
         enabledKey   = "minimapIconEnabled",
         tooltip = {
-            title = format("|T%s:18:18:0:0|t |cff58be81S|r|cffffffffimple |cff58be81Q|r|cffffffffuest |cff58be81P|r|cfffffffflates|cff58be81!|r", self.ICON_TEXTURE or ""),
+            title = SQP.NAME or "Simple Quest Plates!",
             lines = {
                 { left = "|cff58be81Left-Click|r",       right = "Open options" },
+                { left = "|cff58be81Right-Click|r",      right = SQPSettings.enabled and "Disable overlays" or "Enable overlays" },
                 { left = "|cff4ecdc4Drag|r",             right = "Move around minimap" },
                 { left = "|cffe74c3cCtrl+Right-Click|r", right = "Hide minimap icon" },
             },
         },
-        onLeftClick = function()
-            local function openOptions()
-                SQP:OpenOptions()
-            end
-            RGX:After(0, openOptions)
+        onLeftClick = function() SQP:OpenOptions() end,
+        onRightClick = function()
+            SQP:SetSetting('enabled', SQPSettings.enabled == false)
+            SQP:RefreshAllNameplates()
         end,
         onCtrlRight = function() SQP:ToggleMinimapIcon(false) end,
     })

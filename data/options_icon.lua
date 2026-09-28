@@ -13,7 +13,7 @@ function SQP:CreateIconOptions(content)
 
     local leftColumn, rightColumn = SQP:CreateOptionColumns(content)
 
-    -- â”€â”€ LEFT COLUMN: Position â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    -- == LEFT COLUMN: Position ================================================
     local yOffset = -12
 
     local posLabel = leftColumn:CreateFontString(nil, "ARTWORK", "GameFontNormal")
@@ -101,7 +101,7 @@ function SQP:CreateIconOptions(content)
     end)
     anchorReset:SetPoint("LEFT", rightBtn, "RIGHT", 6, 0)
 
-    -- â”€â”€ RIGHT COLUMN: Scale + Display Style â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    -- == RIGHT COLUMN: Scale + Display Style ==================================
     local rightYOffset = -12
 
     local styleLabel = rightColumn:CreateFontString(nil, "ARTWORK", "GameFontNormal")

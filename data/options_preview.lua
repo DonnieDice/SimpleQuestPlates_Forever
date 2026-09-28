@@ -13,20 +13,15 @@ local tonumber = tonumber
 
 -- Create preview nameplate section
 function SQP:CreatePreviewSection(parent)
-    -- Create preview container. Keep the newer framed banner, but render the
-    -- marker using the older live-style nameplate anchoring inside it.
+    -- Mock the Blizzard target nameplate display inside the existing banner.
+    -- Never instantiate a driver-owned nameplate without a unit token.
     local previewFrame = CreateFrame("Frame", nil, parent, "BackdropTemplate")
     previewFrame:SetHeight(82)
     previewFrame:SetPoint("TOPLEFT",  parent, "TOPLEFT",  14, -3)
     previewFrame:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -14, -3)
-    previewFrame:SetBackdrop({
-        bgFile   = "Interface\\Tooltips\\UI-Tooltip-Background",
-        edgeFile = "Interface\\Buttons\\WHITE8x8",
-        tile = true, tileSize = 16, edgeSize = 1,
-        insets = {left=1, right=1, top=1, bottom=1},
-    })
-    previewFrame:SetBackdropColor(0.05, 0.07, 0.10, 0.80)
-    previewFrame:SetBackdropBorderColor(0.14, 0.20, 0.28, 1)
+    -- The preview is a copy of the Blizzard nameplate, not a dialog box.
+    -- Never reparent the actual nameplate: it is owned by the nameplate driver.
+    previewFrame:SetBackdrop(nil)
 
     -- Type-switcher buttons (compact row, centered)
     local killTypeBtn = self:CreateStyledButton(previewFrame, "Kill", 46, 16)
@@ -37,62 +32,81 @@ function SQP:CreatePreviewSection(parent)
     pctTypeBtn:SetPoint("LEFT",  lootTypeBtn, "RIGHT", 4, 0)
 
     -- Mode caption: shows which nameplate integration mode is active
-    local modeCaption = previewFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    local modeCaption = previewFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     modeCaption:SetPoint("TOPRIGHT", previewFrame, "TOPRIGHT", -10, -6)
     previewFrame.modeCaption = modeCaption
 
-    -- Create fake nameplate (geometry is synced to a live nameplate when available)
+    -- The preview is a static mock; the driver-owned Blizzard nameplate template
+    -- registers unit-event handlers that error without a unit, so we never
+    -- instantiate it. The mock is styled to match in-world plates.
     local nameplate = CreateFrame("Frame", nil, previewFrame)
-    nameplate:SetSize(112, 44)
-    nameplate:SetPoint("CENTER", previewFrame, "CENTER", 0, 8)
+    nameplate:SetSize(140, 38)
+    nameplate:SetPoint("CENTER", previewFrame, "CENTER", 0, 4)
 
     -- Nameplate background (Blizzard nameplate navy)
     local nameplateBackground = nameplate:CreateTexture(nil, "BACKGROUND")
     nameplateBackground:SetAllPoints()
-    nameplateBackground:SetColorTexture(0.05, 0.07, 0.10, 0.6)
+    nameplateBackground:Hide()
 
     local nameplateBorder = CreateFrame("Frame", nil, nameplate, "BackdropTemplate")
     nameplateBorder:SetAllPoints()
     nameplateBorder:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 1 })
-    nameplateBorder:SetBackdropBorderColor(0.10, 0.13, 0.16, 1)
+    nameplateBorder:Hide()
 
     -- Health bar
     local healthBar = CreateFrame("StatusBar", nil, nameplate)
-    healthBar:SetSize(100, 12)
-    healthBar:SetPoint("CENTER", nameplate, "CENTER", 0, 0)
+    healthBar:SetSize(110, 11)
+    healthBar:SetPoint("CENTER", nameplate, "CENTER", 0, -5)
     healthBar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
-    healthBar:SetStatusBarColor(0.95, 0.16, 0.16)
+    healthBar:SetStatusBarColor(0.23, 0.27, 0.68)
     healthBar:SetMinMaxValues(0, 100)
-    healthBar:SetValue(75)
+    healthBar:SetValue(85)
 
-    -- Health bar border (Blizzard plates draw a thin black edge around the bar)
+    -- Health bar border (thin black edge around the bar)
     local healthBarBorder = CreateFrame("Frame", nil, healthBar, "BackdropTemplate")
     healthBarBorder:SetAllPoints()
     healthBarBorder:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 1 })
     healthBarBorder:SetBackdropBorderColor(0, 0, 0, 0.9)
 
-    -- Health bar background
     local healthBackground = healthBar:CreateTexture(nil, "BACKGROUND")
     healthBackground:SetAllPoints()
     healthBackground:SetColorTexture(0.1, 0.1, 0.1, 0.8)
 
-    -- Name text (left above the bar, like Blizzard plates)
+    -- Blizzard target display: white centered name and a blue bar.
     local nameText = nameplate:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    nameText:SetPoint("BOTTOMLEFT", healthBar, "TOPLEFT", 2, 1)
-    nameText:SetText("Murloc Warrior")
-    nameText:SetTextColor(1, 0.82, 0)
+    nameText:SetPoint("BOTTOM", healthBar, "TOP", 0, 1)
+    nameText:SetText("Target Name")
+    nameText:SetTextColor(1, 1, 1)
 
-    -- Level text as a native level chip: small dark box right of the bar
-    local levelText = nameplate:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    levelText:SetPoint("BOTTOMRIGHT", healthBar, "TOPRIGHT", -2, 1)
-    levelText:SetText("15")
-    levelText:SetTextColor(1, 1, 1)
+    -- Level text as a native level chip (small dark box right of the bar)
+    local levelText = nameplate:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    levelText:SetPoint("LEFT", healthBar, "RIGHT", 9, 0)
+    levelText:SetText("14")
+    levelText:SetTextColor(1, 0.82, 0)
 
     local levelChipBg = nameplate:CreateTexture(nil, "ARTWORK", nil, -1)
-    levelChipBg:SetColorTexture(0, 0, 0, 0.55)
+    levelChipBg:SetColorTexture(0, 0, 0, 0.85)
     levelChipBg:SetPoint("TOPLEFT", levelText, "TOPLEFT", -3, 2)
     levelChipBg:SetPoint("BOTTOMRIGHT", levelText, "BOTTOMRIGHT", 3, -2)
 
+    -- Static buff/debuff art is part of this mock, never real aura plumbing.
+    -- Keep it in the same geometry calculation as the SQP quest marker.
+    local auraIcons = {}
+    local buffTextures = {
+        "Interface\\Icons\\Spell_Fire_Fire",
+        "Interface\\Icons\\Spell_Nature_Rejuvenation",
+        "Interface\\Icons\\Ability_Warrior_BattleShout",
+        "Interface\\Icons\\Spell_Holy_Renew",
+        "Interface\\Icons\\Spell_Shadow_ShadowWordPain",
+    }
+    for i, texture in ipairs(buffTextures) do
+        local aura = nameplate:CreateTexture(nil, "OVERLAY")
+        aura:SetSize(11, 11)
+        aura:SetTexture(texture)
+        aura:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+        aura:SetPoint("BOTTOM", nameText, "TOP", (i - 3) * 12, 1)
+        auraIcons[#auraIcons + 1] = aura
+    end
     -- Create preview quest icon
     local questFrame = CreateFrame("Frame", nil, nameplate)
     questFrame:SetAllPoints()
@@ -102,15 +116,6 @@ function SQP:CreatePreviewSection(parent)
     icon:SetSize(28, 22)
     icon:SetTexture('Interface\\QuestFrame\\AutoQuest-Parts')
     icon:SetTexCoord(0.30273438, 0.41992188, 0.015625, 0.953125)
-
-    -- Quest display glow (our texture addition, mirrors the plate behavior)
-    local questGlow = CreateFrame("Frame", nil, questFrame, "BackdropTemplate")
-    questGlow:SetPoint("TOPLEFT", icon, "TOPLEFT", -3, 3)
-    questGlow:SetPoint("BOTTOMRIGHT", icon, "BOTTOMRIGHT", 3, -3)
-    questGlow:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 1 })
-    questGlow:SetBackdropBorderColor(1, 0.82, 0, 0.55)
-    questGlow:EnableMouse(false)
-    questGlow:Hide()
 
     -- Quest count text
     local iconText = questFrame:CreateFontString(nil, "OVERLAY", "SystemFont_Outline_Small")
@@ -228,9 +233,10 @@ function SQP:CreatePreviewSection(parent)
 
     -- Store references
     previewFrame.nameplate = nameplate
+    previewFrame.auraIcons = auraIcons
     previewFrame.nameplateBorder = nameplateBorder
     previewFrame.targetGlow = nil
-    previewFrame.questGlow = questGlow
+    previewFrame.questGlow = nil
     previewFrame.questChip = questChip
     previewFrame.questFrame = questFrame
     previewFrame.icon = icon
@@ -281,6 +287,12 @@ function SQP:CreatePreviewSection(parent)
     end
 
     local function GetReferenceNameplate()
+        if C_NamePlate and C_NamePlate.GetNamePlateForUnit then
+            local targetPlate = nil -- options preview must not require a target
+            if targetPlate and targetPlate.GetWidth and targetPlate.GetHeight then
+                return targetPlate
+            end
+        end
         if SQP.ActiveNameplates then
             for plate in pairs(SQP.ActiveNameplates) do
                 local w = GetFrameDimension(plate, "GetWidth", nil)
@@ -290,18 +302,13 @@ function SQP:CreatePreviewSection(parent)
                 end
             end
         end
-        if C_NamePlate and C_NamePlate.GetNamePlateForUnit then
-            local targetPlate = C_NamePlate.GetNamePlateForUnit("target")
-            if targetPlate and targetPlate.GetWidth and targetPlate.GetHeight then
-                return targetPlate
-            end
-        end
         return nil
     end
 
     local function GetReferenceHealthBar(plate)
         if not plate or not plate.UnitFrame then return nil end
-        return plate.UnitFrame.healthBar
+        return (plate.UnitFrame.HealthBarsContainer and plate.UnitFrame.HealthBarsContainer.healthBar)
+            or plate.UnitFrame.healthBar
             or plate.UnitFrame.HealthBar
             or plate.UnitFrame.healthbar
             or plate.UnitFrame.health
@@ -321,6 +328,7 @@ function SQP:CreatePreviewSection(parent)
         if self.percentOutlinePulse and self.percentOutlinePulse:IsPlaying() then self.percentOutlinePulse:Stop() end
         if self.killIconPulse and self.killIconPulse:IsPlaying() then self.killIconPulse:Stop() end
         if self.lootIconPulse and self.lootIconPulse:IsPlaying() then self.lootIconPulse:Stop() end
+        SQP:ClearQuestPulseSync(self)
         icon:SetAlpha(1)
         percentIcon:SetAlpha(1)
         percentIconOutline:SetAlpha(1)
@@ -330,12 +338,12 @@ function SQP:CreatePreviewSection(parent)
 
     -- Update function
     function previewFrame:UpdatePreview()
+        -- Keep the mock nameplate visible; the addon switch controls only
+        -- SQP's quest overlay, just as it does on live nameplates.
+        questFrame:SetShown(SQPSettings.enabled ~= false)
         -- Sync preview nameplate + health bar size to a real nameplate when possible.
-        local plateWidth, plateHeight = 112, 44
-        local healthWidth, healthHeight = 100, 12
-        -- Keep the new preview shell stable. The SQP marker still applies live
-        -- settings below, but the sample nameplate itself should not stretch to
-        -- match an active in-world plate.
+        local plateWidth, plateHeight = 140, 38
+        local healthWidth, healthHeight = 110, 11
         local refPlate = nil
         if refPlate then
             local refPlateWidth = GetFrameDimension(refPlate, "GetWidth", plateWidth)
@@ -353,14 +361,14 @@ function SQP:CreatePreviewSection(parent)
                 healthWidth = Clamp(plateWidth - 12, 70, 240)
             end
 
-            local statusTexture = refHealth.GetStatusBarTexture and refHealth:GetStatusBarTexture()
+            local statusTexture = refHealth and refHealth.GetStatusBarTexture and refHealth:GetStatusBarTexture()
             if statusTexture and statusTexture.GetTexture then
                 local texturePath = statusTexture:GetTexture()
                 if texturePath then
                     healthBar:SetStatusBarTexture(texturePath)
                 end
             end
-            if refHealth.GetStatusBarColor then
+            if refHealth and refHealth.GetStatusBarColor then
                 local r, g, b, a = refHealth:GetStatusBarColor()
                 if r and g and b then
                     healthBar:SetStatusBarColor(r, g, b, a or 1)
@@ -400,7 +408,9 @@ function SQP:CreatePreviewSection(parent)
         )
 
         if self.modeCaption then
-            if SQPSettings.unifiedNameplates then
+            if SQPSettings.enabled == false then
+                self.modeCaption:SetText("|cff9a9a9aSQP disabled|r")
+            elseif SQPSettings.unifiedNameplates then
                 self.modeCaption:SetText("|cff58be81Mode: Unified (level-style chip)|r")
             else
                 self.modeCaption:SetText("|cff9a9a9aMode: Overlay (floating)|r")
@@ -504,7 +514,7 @@ function SQP:CreatePreviewSection(parent)
             if self.lootIcon then self.lootIcon:Hide() end
             if self.killIcon  then self.killIcon:Hide()  end
 
-            if SQPSettings.showPercentIcon ~= false then
+            if SQPSettings.showPercentIcon == true then
                 local pOW   = SQP:GetOutlineInfo("percent")
                 if percentIconMode then
                     -- Icon mode: jellybean + number + "%" at configured side
@@ -554,15 +564,16 @@ function SQP:CreatePreviewSection(parent)
             end
         end
 
-        -- Quest display glow preview (our texture; never Blizzard's selection)
-        if self.questGlow then
-            self.questGlow:SetShown(SQPSettings.showQuestGlow ~= false)
-        end
-
         -- Unified mode shows the count in a level-style chip (no jellybean)
         if self.questChip then
             if SQPSettings.unifiedNameplates then
                 icon:Hide()
+                if previewTypeKey == "percent" then
+                    iconText:SetText("75%")
+                    if self.iconTextOutline then self.iconTextOutline:SetText("75%") end
+                    if self.percentIcon then self.percentIcon:Hide() end
+                    if self.percentIconOutline then self.percentIconOutline:Hide() end
+                end
                 self.questChip:ClearAllPoints()
                 self.questChip:SetPoint("CENTER", iconText, "CENTER", 0, 0)
                 local cw = (iconText.GetStringWidth and iconText:GetStringWidth()) or 16
@@ -578,6 +589,10 @@ function SQP:CreatePreviewSection(parent)
         local animateMain = SQP:IsAnimationEnabled(previewTypeKey, false)
         local mainIconShown = icon:IsShown()
         local percentTextShown = self.percentIcon and self.percentIcon:IsShown() and not mainIconShown
+        local animatePercentSign = previewTypeKey == "percent"
+            and SQPSettings.showPercentIcon == true
+            and SQPSettings.percentShowIconBackground ~= false
+            and SQP:IsAnimationEnabled("percent", true)
 
         if self.iconPulse then
             SQP:ApplyPulseDuration(self.iconPulse, SQP:GetAnimationDuration(previewTypeKey, true))
@@ -591,7 +606,8 @@ function SQP:CreatePreviewSection(parent)
 
         if self.percentPulse then
             SQP:ApplyPulseDuration(self.percentPulse, SQP:GetAnimationDuration("percent", false))
-            if animateMain and percentTextShown then
+            if (animateMain and percentTextShown or animatePercentSign)
+                and self.percentIcon and self.percentIcon:IsShown() then
                 if not self.percentPulse:IsPlaying() then self.percentPulse:Play() end
             else
                 if self.percentPulse:IsPlaying() then self.percentPulse:Stop() end
@@ -601,7 +617,8 @@ function SQP:CreatePreviewSection(parent)
 
         if self.percentOutlinePulse then
             SQP:ApplyPulseDuration(self.percentOutlinePulse, SQP:GetAnimationDuration("percent", false))
-            if animateMain and percentTextShown and self.percentIconOutline and self.percentIconOutline:IsShown() then
+            if (animateMain and percentTextShown or animatePercentSign)
+                and self.percentIconOutline and self.percentIconOutline:IsShown() then
                 if not self.percentOutlinePulse:IsPlaying() then self.percentOutlinePulse:Play() end
             else
                 if self.percentOutlinePulse:IsPlaying() then self.percentOutlinePulse:Stop() end
@@ -628,6 +645,11 @@ function SQP:CreatePreviewSection(parent)
                 lootIcon:SetAlpha(1)
             end
         end
+        if SQPSettings.syncAnimations then
+            SQP:SyncQuestPulses(self)
+        else
+            SQP:ClearQuestPulseSync(self)
+        end
     end
 
     -- Restart animation when the panel becomes visible again
@@ -641,7 +663,8 @@ function SQP:CreatePreviewSection(parent)
         lootTypeBtn:SetAlpha(activeType == "loot"    and 1 or 0.45)
         pctTypeBtn:SetAlpha( activeType == "percent" and 1 or 0.45)
     end
-    UpdateTypeButtons("kill")
+    UpdateTypeButtons(nil)
+    previewFrame.clearTypeSelection = function() UpdateTypeButtons(nil) end
 
     -- External helpers to switch preview mode from tab clicks and option controls
     previewFrame.activateKillMode = function()
@@ -672,9 +695,18 @@ function SQP:CreatePreviewSection(parent)
     end
 
     -- Set button scripts (after activate functions are defined)
-    killTypeBtn:SetScript("OnClick", function() previewFrame.activateKillMode() end)
-    lootTypeBtn:SetScript("OnClick", function() previewFrame.activateLootMode() end)
-    pctTypeBtn:SetScript("OnClick",  function() previewFrame.activatePercentMode() end)
+    local function SelectType(page, activate)
+        if SQP.optionsPanel then SQP.optionsPanel:SelectTabByName("Global") end
+        if SQP.optionsPanel and SQP.optionsPanel.ClearTabHighlight then
+            SQP.optionsPanel:ClearTabHighlight()
+        end
+        local pager = SQP.optionControls and SQP.optionControls.generalPager
+        if pager then pager:SetPage(page) end
+        activate()
+    end
+    killTypeBtn:SetScript("OnClick", function() SelectType(2, previewFrame.activateKillMode) end)
+    lootTypeBtn:SetScript("OnClick", function() SelectType(3, previewFrame.activateLootMode) end)
+    pctTypeBtn:SetScript("OnClick", function() SelectType(4, previewFrame.activatePercentMode) end)
 
     -- Initial update
     previewFrame:UpdatePreview()

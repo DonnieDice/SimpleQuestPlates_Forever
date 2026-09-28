@@ -122,10 +122,10 @@ local function ObjectiveTextMatchesUnit(objText, unitNameNorm, objectiveType)
     if objectiveType == "item" or objectiveType == "object" then
         return overlap >= 1
     end
-    -- Kill/other objectives must name the unit's class noun (its final name
-    -- token) so same-family mobs do not cross-match: Rot Hide Gnoll must not
-    -- pick up Rot Hide Mongrel or Rot Hide Graverobber objectives and vice versa.
-    return setA[listB[#listB]] == true
+    if #listA <= 1 or #listB <= 1 then
+        return overlap >= 1
+    end
+    return overlap >= 2
 end
 
 local function FindObjectiveTypeForText(text)
@@ -227,6 +227,10 @@ function SQP:GetQuestProgress(unitID)
         scanTooltip:Hide()
     end
 
+    if SQPSettings.debug and (unitID == "target" or unitID == "mouseover") then
+        self:PrintMessage(format("[diag] %s: tooltip method=%s lines=%d", tostring(unitName),
+            tooltipData and "C_TooltipInfo" or "GameTooltip", #tooltipLines), "DEBUG")
+    end
     if #tooltipLines > 0 then
         local tooltipObjectives = {}
 
@@ -252,18 +256,6 @@ function SQP:GetQuestProgress(unitID)
                     text = nil
                 end
             end
-            if lineType == nil and type(text) == "string" then
-                -- Legacy untyped tooltip rows: accept only genuine objective
-                -- text for this unit (or item/objective lines the tooltip
-                -- already scoped to the unit). Completed parts parse to zero
-                -- remaining and are rejected here.
-                local lineRemaining = GetRemainingFromObjectiveText(text)
-                local lineTypeGuess = FindObjectiveTypeForText(text)
-                local lineNameMatched = ObjectiveTextMatchesUnit(text, unitNameNorm)
-                if not (lineRemaining and lineRemaining > 0 and (lineNameMatched or lineTypeGuess == "item" or lineTypeGuess == "object")) then
-                    text = nil
-                end
-            end
             if type(text) ~= "string" then
                 text = text and tostring(text) or nil
             end
@@ -283,7 +275,7 @@ function SQP:GetQuestProgress(unitID)
         end
 
         if #tooltipObjectives > 0 then
-            local chosen = nil
+            local chosen = tooltipObjectives[1]
             if unitNameNorm then
                 for _, tooltipObj in ipairs(tooltipObjectives) do
                     local tNorm = NormalizeObjectiveText(tooltipObj.text)
@@ -293,29 +285,21 @@ function SQP:GetQuestProgress(unitID)
                     end
                 end
             end
-            if not chosen then
-                for _, tooltipObj in ipairs(tooltipObjectives) do
-                    local tType = FindObjectiveTypeForText(tooltipObj.text)
-                    if tType == "item" or tType == "object" then
-                        chosen = tooltipObj
-                        break
-                    end
-                end
-            end
 
-            if chosen then
-                local objType = FindObjectiveTypeForText(chosen.text)
-                if objType == "item" or objType == "object" then
-                    itemsNeeded = chosen.amountNeeded
-                else
-                    objectiveCount = chosen.amountNeeded
-                end
-                progressGlob = chosen.text
-                if chosen.isPercent then
-                    questType = 3
-                else
-                    questType = questType or 1
-                end
+            if SQPSettings.debug and (unitID == "target" or unitID == "mouseover") then
+                self:PrintMessage(format("[diag] %s: matched objective '%s'", tostring(unitName), tostring(chosen.text)), "DEBUG")
+            end
+            local objType = FindObjectiveTypeForText(chosen.text)
+            if objType == "item" or objType == "object" then
+                itemsNeeded = chosen.amountNeeded
+            else
+                objectiveCount = chosen.amountNeeded
+            end
+            progressGlob = chosen.text
+            if chosen.isPercent then
+                questType = 3
+            else
+                questType = questType or 1
             end
         end
     end
@@ -328,13 +312,8 @@ function SQP:GetQuestProgress(unitID)
             if not questID and not questLogIndex then return end
             local objectives = SQP.Compat.GetQuestObjectives(questID, questLogIndex)
             for _, obj in ipairs(objectives) do
-                local objFinished = obj.isFinished or obj.finished
-                if obj.text and not objFinished and ObjectiveTextMatchesUnit(obj.text, unitNameNorm, obj.type) then
+                if obj.text and ObjectiveTextMatchesUnit(obj.text, unitNameNorm, obj.type) then
                     local numLeft, isPercent = GetRemainingFromObjectiveText(obj.text)
-                    if not numLeft and obj.numRequired and obj.numFulfilled then
-                        local remaining = (tonumber(obj.numRequired) or 0) - (tonumber(obj.numFulfilled) or 0)
-                        if remaining > 0 then numLeft = remaining end
-                    end
                     if numLeft and numLeft > 0 then
                         if obj.type == 'item' or obj.type == 'object' then
                             if numLeft > itemsNeeded then itemsNeeded = numLeft end
@@ -369,6 +348,10 @@ function SQP:GetQuestProgress(unitID)
         end
     end
 
+    if SQPSettings.debug and (unitID == "target" or unitID == "mouseover") then
+        self:PrintMessage(format("[diag] %s: result glob=%s type=%s kills=%s items=%s", tostring(unitName),
+            tostring(progressGlob), tostring(questType), tostring(objectiveCount), tostring(itemsNeeded)), "DEBUG")
+    end
     return progressGlob, progressGlob and (questType or 1) or nil, objectiveCount, itemsNeeded, questIdForItems
 end
 
@@ -496,6 +479,16 @@ function SQP:UpdateQuestIcon(plate, unitID)
     end
 
     Q.questRelatedOnly = questRelatedOnly
+    do
+        local diagKey = tostring(progressGlob) .. "|" .. tostring(questType) .. "|" ..
+            tostring(objectiveCount) .. "|" .. tostring(itemsNeeded) .. "|" .. tostring(displayText)
+        if SQPSettings.debug and (unitID == "target" or unitID == "mouseover" or plate._sqpDiagKey ~= diagKey) then
+            plate._sqpDiagKey = diagKey
+            self:PrintMessage(format("[diag] %s: show=%s text=%s type=%s kills=%s items=%s relatedOnly=%s",
+                tostring(unitID), tostring(showIcon), tostring(displayText), tostring(questType),
+                tostring(objectiveCount), tostring(itemsNeeded), tostring(questRelatedOnly)), "DEBUG")
+        end
+    end
 
     -- Per-type tinting: determine effective quest type
     local effectiveType = (Q.hasItem and "loot") or ((questType or 0) == 3 and "percent") or "kill"
@@ -516,7 +509,11 @@ function SQP:UpdateQuestIcon(plate, unitID)
     end
 
     local percentIconMode = IsIconStyleEnabled("percent")
-    local showPercentIcon = showIcon and questType == 3 and SQPSettings.showPercentIcon ~= false
+    local unified = self:IsUnifiedMode(plate)
+    -- The native level chip is the complete display. Do not render a second
+    -- floating percent sign beside it; put the percentage inside the chip.
+    local showPercentIcon = not unified and showIcon and questType == 3
+        and SQPSettings.showPercentIcon ~= false
     local percentText = tostring(displayText) .. "%"
     if showPercentIcon then
         if Q.icon then
@@ -568,10 +565,12 @@ function SQP:UpdateQuestIcon(plate, unitID)
     local animateMain = self:IsAnimationEnabled(effectiveType, false)
     local mainIconShown = Q.icon and Q.icon:IsShown()
     local percentTextShown = Q.percentIcon and Q.percentIcon:IsShown() and not mainIconShown
+    local animatePercentSign = showPercentIcon and percentIconMode
+        and self:IsAnimationEnabled("percent", true)
 
     if Q.iconPulse then
         self:ApplyPulseDuration(Q.iconPulse, self:GetAnimationDuration(effectiveType, true))
-        if animateMain and showIcon and mainIconShown then
+        if animateMain and showIcon and mainIconShown and not unified then
             if not Q.iconPulse:IsPlaying() then
                 Q.iconPulse:Play()
             end
@@ -586,7 +585,8 @@ function SQP:UpdateQuestIcon(plate, unitID)
     end
     if Q.percentPulse then
         self:ApplyPulseDuration(Q.percentPulse, self:GetAnimationDuration("percent", false))
-        if animateMain and showIcon and percentTextShown then
+        if showIcon and ((animateMain and percentTextShown) or animatePercentSign)
+            and Q.percentIcon and Q.percentIcon:IsShown() then
             if not Q.percentPulse:IsPlaying() then
                 Q.percentPulse:Play()
             end
@@ -601,7 +601,8 @@ function SQP:UpdateQuestIcon(plate, unitID)
     end
     if Q.percentOutlinePulse then
         self:ApplyPulseDuration(Q.percentOutlinePulse, self:GetAnimationDuration("percent", false))
-        if animateMain and showIcon and percentTextShown and Q.percentIconOutline and Q.percentIconOutline:IsShown() then
+        if showIcon and ((animateMain and percentTextShown) or animatePercentSign)
+            and Q.percentIconOutline and Q.percentIconOutline:IsShown() then
             if not Q.percentOutlinePulse:IsPlaying() then
                 Q.percentOutlinePulse:Play()
             end
@@ -638,9 +639,11 @@ function SQP:UpdateQuestIcon(plate, unitID)
                 if Q.iconTextOutline then Q.iconTextOutline:SetText("") end
             end
         else
-            Q.iconText:SetText(displayText)
+            local chipText = unified and questType == 3
+                and (tostring(displayText) .. "%") or displayText
+            Q.iconText:SetText(chipText)
             if Q.iconTextOutline then
-                Q.iconTextOutline:SetText(displayText)
+                Q.iconTextOutline:SetText(chipText)
             end
         end
         Q.iconText:SetTextColor(unpack(displayColor))
@@ -649,7 +652,7 @@ function SQP:UpdateQuestIcon(plate, unitID)
         if not Q:IsVisible() then
             Q.ani:Stop()
             Q:Show()
-            Q.ani:Play()
+            if SQPSettings.showQuestMarker ~= false then Q.ani:Play() end
             if Q.icon then
                 Q.icon:SetVertexColor(1, 1, 1, 1)
             end
@@ -758,9 +761,10 @@ function SQP:UpdateQuestIcon(plate, unitID)
         Q.levelChip:Hide()
     end
 
-    self:ApplyQuestGlow(Q)
     if SQPSettings.syncAnimations then
         self:SyncQuestPulses(Q)
+    else
+        self:ClearQuestPulseSync(Q)
     end
 
     reportSlowPath("UpdateQuestIcon", started)

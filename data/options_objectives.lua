@@ -94,7 +94,7 @@ local function CreateSectionFrame(parent, title, anchor, relAnchor, x, y, width,
     section:SetBackdropColor(0.08, 0.08, 0.08, 0.85)
     section:SetBackdropBorderColor(0.188, 0.212, 0.231, 1)
 
-    local header = section:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+    local header = section:CreateFontString(nil, "ARTWORK", "GameFontNormal")
     SQP:ApplyDefaultFont(header)
     header:SetPoint("TOPLEFT", 12, -10)
     header:SetText("|cffbc6fa8" .. title .. "|r")
@@ -117,7 +117,7 @@ local function CreateObjectiveColorControl(parent, objective, yOffset)
     swatch:SetColorTexture(unpack(SQPSettings[objective.colorKey] or objective.colorDefault))
     SQP.optionControls[objective.colorKey .. "CompactSwatch"] = swatch
 
-    local label = parent:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+    local label = parent:CreateFontString(nil, "ARTWORK", "GameFontNormal")
     SQP:ApplyDefaultFont(label)
     label:SetPoint("LEFT", colorBtn, "RIGHT", 6, 0)
     label:SetText(objective.colorLabel)
@@ -174,15 +174,17 @@ local function CreateCompactSlider(parent, title, key, defaultValue, minValue, m
 	return yOffset - 38
 end
 
-function SQP:CreateAnimationOptions(content)
+-- Retained for historical settings migration/reference. The active Animation
+-- tab is built in options_general.lua from framework cards and rows.
+function SQP:CreateLegacyAnimationOptions(content)
     if not self.optionControls then self.optionControls = {} end
 
-    local header = content:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+    local header = content:CreateFontString(nil, "ARTWORK", "GameFontNormal")
     SQP:ApplyDefaultFont(header)
     header:SetPoint("TOPLEFT", 14, -12)
     header:SetText("|cffbc6fa8Animation Controls|r")
 
-    local note = content:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+    local note = content:CreateFontString(nil, "ARTWORK", "GameFontNormal")
     SQP:ApplyDefaultFont(note)
     note:SetPoint("TOPLEFT", header, "BOTTOMLEFT", 0, -4)
     note:SetText("One place for all nameplate animation behavior.")
@@ -203,7 +205,7 @@ function SQP:CreateAnimationOptions(content)
     self.optionControls.globalAnimationEnabled = enabledFrame.checkbox
     yOffset = yOffset - 24
 
-    local modeLabel = globalSection:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+    local modeLabel = globalSection:CreateFontString(nil, "ARTWORK", "GameFontNormal")
     SQP:ApplyDefaultFont(modeLabel)
     modeLabel:SetPoint("TOPLEFT", 12, yOffset)
     modeLabel:SetText("Animate when")
@@ -245,7 +247,7 @@ function SQP:CreateAnimationOptions(content)
 
     CreateCompactSlider(globalSection, "Global intensity", "globalAnimationIntensity", 100, 25, 200, 5, yOffset, nil)
 
-    local taskSectionLabel = perTypeSection:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+    local taskSectionLabel = perTypeSection:CreateFontString(nil, "ARTWORK", "GameFontNormal")
     SQP:ApplyDefaultFont(taskSectionLabel)
     taskSectionLabel:SetPoint("TOPLEFT", 12, -34)
     taskSectionLabel:SetText("|cff58be81Task Icons|r")
@@ -255,7 +257,7 @@ function SQP:CreateAnimationOptions(content)
     taskFrame.checkbox:SetChecked(SQPSettings.animateQuestIcons == true)
     self.optionControls.animateQuestIcons = taskFrame.checkbox
 
-    local summary = perTypeSection:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+    local summary = perTypeSection:CreateFontString(nil, "ARTWORK", "GameFontNormal")
     SQP:ApplyDefaultFont(summary)
     summary:SetPoint("TOPLEFT", 12, -82)
     summary:SetWidth(280)
@@ -265,7 +267,7 @@ function SQP:CreateAnimationOptions(content)
     local updaters = {}
     local startY = -122
     for index, objective in ipairs(OBJECTIVES) do
-        local title = perTypeSection:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+        local title = perTypeSection:CreateFontString(nil, "ARTWORK", "GameFontNormal")
         SQP:ApplyDefaultFont(title)
         title:SetPoint("TOPLEFT", 12, startY)
         title:SetText("|cffbc6fa8" .. objective.title .. "|r")
@@ -275,7 +277,7 @@ function SQP:CreateAnimationOptions(content)
         mainFrame.checkbox:SetChecked(SQPSettings[objective.animateMainKey] == true)
         self.optionControls[objective.animateMainKey] = mainFrame.checkbox
 
-	local label = perTypeSection:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+	local label = perTypeSection:CreateFontString(nil, "ARTWORK", "GameFontNormal")
 	SQP:ApplyDefaultFont(label)
 	label:SetPoint("TOPLEFT", 34, startY - 42)
 	label:SetText(format("Intensity: %d%%", SQPSettings[objective.intensityKey] or 100))
@@ -353,7 +355,7 @@ end
 function SQP:CreateStyleOptions(content)
     if not self.optionControls then self.optionControls = {} end
 
-    local header = content:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+    local header = content:CreateFontString(nil, "ARTWORK", "GameFontNormal")
     SQP:ApplyDefaultFont(header)
     header:SetPoint("TOPLEFT", 14, -12)
     header:SetText("|cffbc6fa8Nameplate Style|r")
@@ -412,7 +414,7 @@ end
 function SQP:CreateLayoutOptions(content)
     if not self.optionControls then self.optionControls = {} end
 
-    local header = content:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+    local header = content:CreateFontString(nil, "ARTWORK", "GameFontNormal")
     SQP:ApplyDefaultFont(header)
     header:SetPoint("TOPLEFT", 14, -12)
     header:SetText("|cffbc6fa8Layout & Position|r")
@@ -425,7 +427,7 @@ function SQP:CreateLayoutOptions(content)
     yOffset = CreateCompactSlider(globalSection, "Main anchor offset X", "offsetX", 0, -100, 100, 1, yOffset, nil)
     yOffset = CreateCompactSlider(globalSection, "Main anchor offset Y", "offsetY", 3, -100, 100, 1, yOffset, nil)
 
-    local anchorLabel = globalSection:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+    local anchorLabel = globalSection:CreateFontString(nil, "ARTWORK", "GameFontNormal")
     SQP:ApplyDefaultFont(anchorLabel)
     anchorLabel:SetPoint("TOPLEFT", 12, yOffset)
     anchorLabel:SetText("Nameplate side")
@@ -456,7 +458,7 @@ function SQP:CreateLayoutOptions(content)
 
     local currentY = -32
     for _, objective in ipairs(OBJECTIVES) do
-        local title = typeSection:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+        local title = typeSection:CreateFontString(nil, "ARTWORK", "GameFontNormal")
         SQP:ApplyDefaultFont(title)
         title:SetPoint("TOPLEFT", 12, currentY)
         title:SetText("|cffbc6fa8" .. objective.title .. "|r")
