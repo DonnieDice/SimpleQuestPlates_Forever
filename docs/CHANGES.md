@@ -1,3 +1,10 @@
+# 2.1.7-forever.beta.3 - 2026-09-28
+
+## Changes
+- Options panel reworked: Global page with General, Position & Scale, Quest Display and Font cards, plus an Animation tab; Kill, Loot and Percent settings open from the matching preview buttons.
+- Fixed animation intensity/sync and percent-sign animation; percent counts render inside the native level chip in unified mode.
+- New placement baseline: Offset X 16, Offset Y -4.
+
 # 2.1.7-forever.beta.2 - 2026-09-26
 
 ## Changes
@@ -53,7 +60,7 @@
 ## Changes
 
 - Migrated all sliders to the RGX Framework `UI:CreateSlider` with custom track-style design using RGX brand colors.
-- Removed per-slider manual label, reset button, and OnValueChanged boilerplate — the framework now handles all of this internally.
+- Removed per-slider manual label, reset button, and OnValueChanged boilerplate ï¿½ the framework now handles all of this internally.
 - `SQP:CreateStyledSlider` now delegates to `UI:CreateSlider` when RGXUI is available, with fallback to the old Blizzard slider.
 - Sliders support click, drag, scroll wheel, and show value label on hover.
 - Net reduction of ~160 lines of manual slider setup code across all options files.
