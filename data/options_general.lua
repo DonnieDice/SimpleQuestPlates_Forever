@@ -124,7 +124,7 @@ local function BuildDisplayPage(leftColumn, rightColumn, generalCard)
 
         local xSlider = SQP:CreateStyledSlider(c, {
             key = "offsetX", label = "Offset X", min = -100, max = 100, step = 1,
-            default = 30, storage = SQPSettings, width = 160,
+            default = 16, storage = SQPSettings, width = 160,
             onChange = function(value) SQP:RefreshAllNameplates() end,
         })
         xSlider:SetPoint("TOPLEFT", 8, yOffset)
@@ -135,7 +135,7 @@ local function BuildDisplayPage(leftColumn, rightColumn, generalCard)
 
         local ySlider = SQP:CreateStyledSlider(c, {
             key = "offsetY", label = "Offset Y", min = -100, max = 100, step = 1,
-            default = 0, storage = SQPSettings, width = 160,
+            default = -4, storage = SQPSettings, width = 160,
             onChange = function(value) SQP:RefreshAllNameplates() end,
         })
         ySlider:SetPoint("TOPLEFT", 8, yOffset)

@@ -29,7 +29,7 @@ function SQP:CreateIconOptions(content)
 		min = -100,
 		max = 100,
 		step = 1,
-		default = 12,
+		default = 16,
 		storage = SQPSettings,
 		width = 160,
 		onChange = function(value)
@@ -48,7 +48,7 @@ function SQP:CreateIconOptions(content)
 		min = -100,
 		max = 100,
 		step = 1,
-		default = 3,
+		default = -4,
 		storage = SQPSettings,
 		width = 160,
 		onChange = function(value)
