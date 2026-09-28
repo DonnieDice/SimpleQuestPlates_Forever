@@ -15,6 +15,18 @@ function SQP:CreateOptionsPanel()
     end
 
     local RGX = _G.RGXFramework
+
+    -- One-time font designation for this addon (elements, buttons, and text
+    -- all render through RGXFonts:GetDefault()).
+    local Fonts = _G.RGXFonts
+    if RGX and type(RGX.SetHighlightColor) == "function" then
+        pcall(function() RGX:SetHighlightColor({ 0.345, 0.745, 0.506 }, { 0.737, 0.435, 0.659 }) end)
+    end
+    if Fonts and type(Fonts.SetDefault) == "function" then
+        pcall(function()
+            Fonts:SetDefault("FrizQuadrata")
+        end)
+    end
     local UI = RGX and RGX:GetUI() or _G.RGXUI
     if not UI then
         print("|cFFFF4444[SQP] RGXUI not available — options panel cannot be created.|r")
@@ -24,7 +36,8 @@ function SQP:CreateOptionsPanel()
     -- SQP brand green (#58be81) on this addon's UI only. Hardcoded: core.lua
     -- also writes SQP.SECTION_COLOR ("RGX Blue") and load order decides who
     -- survives, so do not read it at runtime.
-    local BrandTheme = { primary = { 0.345, 0.745, 0.506 } }
+    local BrandTheme = { primary = { 0.345, 0.745, 0.506 }, accent = { 0.737, 0.435, 0.659 } }
+    SQP.optionsTheme = BrandTheme
     local Design = _G.RGXDesign
     local function WithBrand(fn)
         return function(...)
@@ -42,12 +55,13 @@ function SQP:CreateOptionsPanel()
         return UI:CreateOptionsPanel({
         addonName    = "SimpleQuestPlates",
         theme        = BrandTheme,
-        title        = "|cff58be81S|cffffffffimple |cff58be81Q|cffffffffuest |cff58be81P|cfffffffflates|cff58be81!|r",
+        title        = SQP.NAME,
+        sidebarTitle = (SQP.NAME:gsub("%s*%b()", "")),
         subtitle     = "Quest tracking overlay for enemy nameplates",
         author       = SQP.AUTHOR or "DonnieDice",
         website      = "|cff7289daDiscord:|r |cffffd700discord.gg/N7kdKAHVVF|r",
         brand        = "|cff8b4b5cRGX|r |cffffd700Mods|r",
-        icon         = "Interface\\AddOns\\SQP_Forever\\media\\logo.tga",
+        icon         = SQP.ICON_TEXTURE,
         openInSettings = true,
         registerInSettings = true,
         bannerHeight = 88,
@@ -55,14 +69,21 @@ function SQP:CreateOptionsPanel()
             SQP.previewFrame = SQP:CreatePreviewSection(frame)
         end),
         tabs = {
-            { text = "General", content = WithBrand(function(f) SQP:CreateGlobalOptions(f) end) },
-            { text = "Kill",    content = WithBrand(function(f) SQP:CreateKillOptions(f) end),
-              onSelect = function() if SQP.previewFrame then SQP.previewFrame.activateKillMode() end end },
-            { text = "Loot",   content = WithBrand(function(f) SQP:CreateLootOptions(f) end),
-              onSelect = function() if SQP.previewFrame then SQP.previewFrame.activateLootMode() end end },
-            { text = "Percent", content = WithBrand(function(f) SQP:CreatePercentOptions(f) end),
-              onSelect = function() if SQP.previewFrame then SQP.previewFrame.activatePercentMode() end end },
-            { text = "About",  content = WithBrand(function(f) SQP:CreateAboutSection(f) end) },
+            { text = "Global", content = WithBrand(function(f) SQP:CreateGlobalOptions(f) end),
+              onSelect = function()
+                  if SQP.optionControls and SQP.optionControls.generalPager then
+                      SQP.optionControls.generalPager:SetPage(1)
+                  end
+                  if SQP.previewFrame and SQP.previewFrame.clearTypeSelection then
+                      SQP.previewFrame.clearTypeSelection()
+                  end
+              end },
+            { text = "Animation", content = WithBrand(function(f) SQP:CreateAnimationOptions(f) end),
+              onSelect = function()
+                  if SQP.previewFrame and SQP.previewFrame.clearTypeSelection then
+                      SQP.previewFrame.clearTypeSelection()
+                  end
+              end },
         },
         })
     end
