@@ -1,18 +1,18 @@
 --=====================================================================================
--- RGX | Simple Quest Plates! - esES.lua
+-- RGX | Simple Quest Plates! - esMX.lua
 
 -- Author: DonnieDice
--- Description: Spanish localization
+-- Description: Mexican Spanish localization
 --=====================================================================================
 
 local addonName, SQP = ...
 local locale = GetLocale()
 
-if locale ~= "esES" then return end
+if locale ~= "esMX" then return end
 
 local L = SQP.L or {}
 
--- Spanish translations
+-- Mexican Spanish translations
 L["OPTIONS_ENABLE"] = "Activar Simple Quest Plates"
 L["OPTIONS_DISPLAY"] = "Configuración de visualización"
 L["OPTIONS_SCALE"] = "Tamaño del icono"
@@ -36,7 +36,7 @@ L["OPTIONS_DEBUG"] = "Activar modo de depuración"
 L["OPTIONS_CHAT_MESSAGES"] = "Mostrar mensajes de chat"
 L["OPTIONS_COMBAT"] = "Configuración de combate"
 L["OPTIONS_HIDE_COMBAT"] = "Ocultar iconos en combate"
-L["OPTIONS_HIDE_INSTANCE"] = "Ocultar iconos en estancias"
+L["OPTIONS_HIDE_INSTANCE"] = "Ocultar iconos en instancias"
 L["OPTIONS_ICON_POSITION"] = "Posición del icono"
 L["OPTIONS_RESET_FONT"] = "Restablecer configuración de fuente"
 L["OPTIONS_RESET_ICON"] = "Restablecer configuración de iconos"
@@ -74,9 +74,9 @@ L["OPTIONS_LOOT_ICON_OFFSET_Y"] = "Botín Y"
 L["OPTIONS_SIZE"] = "Tamaño"
 L["OPTIONS_POSITION"] = "Posición"
 L["CMD_SCALE_SET"] = "Escala del icono establecida en: |cff58be81%.1f|r"
-L["CMD_SCALE_INVALID"] = "|cffff0000Valor de escala no válido. Usa un número entre 0,5 y 2,0|r"
+L["CMD_SCALE_INVALID"] = "|cffff0000Valor de escala inválido. Usa un número entre 0.5 y 2.0|r"
 L["CMD_OFFSET_SET"] = "Desplazamiento del icono establecido en: |cff58be81X=%d, Y=%d|r"
-L["CMD_OFFSET_INVALID"] = "|cffff0000Valores de desplazamiento no válidos. Usa números entre -50 y 50|r"
+L["CMD_OFFSET_INVALID"] = "|cffff0000Valores de desplazamiento inválidos. Usa números entre -50 y 50|r"
 L["CMD_RESET"] = "|cff58be81Todos los ajustes se han restablecido a los valores predeterminados|r"
 L["CMD_STATUS"] = "|cff58be81Estado de Simple Quest Plates:|r"
 L["CMD_STATUS_STATE"] = "  Estado: %s"
@@ -111,9 +111,9 @@ L["SETTINGS_RESET"] = "|cff58be81Todos los ajustes se han restablecido a los val
 L["SETTINGS_SCALE_SET"] = "Escala del icono establecida en: |cff58be81%.1f|r"
 L["SETTINGS_OFFSET_SET"] = "Desplazamiento del icono establecido en: |cff58be81X=%d, Y=%d|r"
 L["SETTINGS_ANCHOR_SET"] = "Anclaje establecido en: |cff58be81%s|r"
-L["ERROR_INVALID_SCALE"] = "|cffff0000Valor de escala no válido. Usa un número entre 0,5 y 2,0|r"
-L["ERROR_INVALID_OFFSET"] = "|cffff0000Valores de desplazamiento no válidos. Usa números entre -50 y 50|r"
-L["ERROR_INVALID_ANCHOR"] = "|cffff0000Anclaje no válido. Usa LEFT o RIGHT|r"
+L["ERROR_INVALID_SCALE"] = "|cffff0000Valor de escala inválido. Usa un número entre 0.5 y 2.0|r"
+L["ERROR_INVALID_OFFSET"] = "|cffff0000Valores de desplazamiento inválidos. Usa números entre -50 y 50|r"
+L["ERROR_INVALID_ANCHOR"] = "|cffff0000Anclaje inválido. Usa LEFT o RIGHT|r"
 L["ERROR_UNKNOWN_COMMAND"] = "|cffff0000Comando desconocido. Escribe /sqp help|r"
 L["ERROR_COMBAT_LOCKDOWN"] = "No se puede abrir el panel de opciones durante el combate."
 L["STATUS_HEADER"] = "|cff58be81Estado de Simple Quest Plates:|r"
