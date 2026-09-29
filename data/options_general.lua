@@ -281,6 +281,7 @@ local function BuildAnimationPage(page)
         SQP.optionControls.showQuestMarker = toastFrame.checkbox
         toastFrame.checkbox:SetScript("OnClick", function(self)
             SQP:SetSetting('showQuestMarker', self:GetChecked())
+            SQP:RefreshQuestToastSettings(self:GetChecked())
             SQP:RefreshAllNameplates()
         end)
         SQP:SetControlTooltip(toastFrame, "Quest marker toast: the question-mark pop that plays when you target a mob with a quest icon.")
@@ -289,6 +290,7 @@ local function BuildAnimationPage(page)
         local toastDurationSlider = SQP:CreateStyledSlider(c, {
             key = "toastDuration", label = "Toast Duration", min = 0.3, max = 2.5, step = 0.1,
             default = 1.0, storage = SQPSettings, suffix = "s", width = 160,
+            onChange = function() SQP:RefreshQuestToastSettings() end,
         })
         toastDurationSlider:SetPoint("TOPLEFT", 8, yOffset)
         toastDurationSlider:SetPoint("TOPRIGHT", c, "TOPRIGHT", -8, yOffset)
@@ -299,6 +301,7 @@ local function BuildAnimationPage(page)
         local toastHeightSlider = SQP:CreateStyledSlider(c, {
             key = "toastHeight", label = "Toast Height", min = 0, max = 60, step = 2,
             default = 20, storage = SQPSettings, suffix = "", width = 160,
+            onChange = function() SQP:RefreshQuestToastSettings() end,
         })
         toastHeightSlider:SetPoint("TOPLEFT", 8, yOffset)
         toastHeightSlider:SetPoint("TOPRIGHT", c, "TOPRIGHT", -8, yOffset)
@@ -309,7 +312,7 @@ local function BuildAnimationPage(page)
         local toastSizeSlider = SQP:CreateStyledSlider(c, {
             key = "questMarkerSize", label = "Toast Size", min = 12, max = 48, step = 2,
             default = 28, storage = SQPSettings, suffix = "", width = 160,
-            onChange = function(value) SQP:RefreshAllNameplates() end,
+            onChange = function() SQP:RefreshQuestToastSettings() end,
         })
         toastSizeSlider:SetPoint("TOPLEFT", 8, yOffset)
         toastSizeSlider:SetPoint("TOPRIGHT", c, "TOPRIGHT", -8, yOffset)

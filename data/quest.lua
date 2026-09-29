@@ -391,27 +391,12 @@ function SQP:UpdateQuestIcon(plate, unitID)
     end
     
     local progressGlob, questType, objectiveCount, itemsNeeded, questID = self:GetQuestProgress(unitID)
-    local questRelatedOnly = false
 
-    if not progressGlob and SQP.Compat and SQP.Compat.IsQuestRelatedUnit then
-        local ok, related = pcall(SQP.Compat.IsQuestRelatedUnit, unitID)
-        if ok and related then
-            questRelatedOnly = true
-        end
-    end
-
-    if questRelatedOnly then
-        if UnitCanAttack and not UnitCanAttack("player", unitID) then
-            questRelatedOnly = false
-        end
-        if UnitIsPlayer and UnitIsPlayer(unitID) then
-            questRelatedOnly = false
-        end
-    end
-
-    -- Decide if there is a relevant objective for this unit
+    -- Show only confirmed, incomplete objectives. Blizzard's broad
+    -- quest-related flag can cover dungeon mobs and objects whose progress
+    -- belongs to another player or cannot be resolved for this unit.
     local showIcon = false
-    local displayText = "?"
+    local displayText = ""
     local displayColor = {1, 1, 1} -- Default white
     local function IsIconStyleEnabled(typeKey)
         local value = SQPSettings[typeKey .. "ShowIconBackground"]
@@ -448,45 +433,18 @@ function SQP:UpdateQuestIcon(plate, unitID)
             end
             Q.hasItem = false
             Q.questType = questType
-        elseif questType == 3 then -- Percent quest without a specific kill count
-            showIcon = true
-            displayText = objectiveCount > 0 and objectiveCount or '?'
-            displayColor = SQPSettings.percentColor or {0.2, 1, 1}
-            Q.hasItem = false
-            Q.questType = questType
         end
     end
 
-    if questRelatedOnly and not showIcon then
-        -- Only show "?" if at least one incomplete quest exists (prevents stale icons after quest completion)
-        local hasIncomplete = false
-        if SQP.Compat and SQP.Compat.GetNumQuestLogEntries then
-            for i = 1, SQP.Compat.GetNumQuestLogEntries() do
-                local info = SQP.Compat.GetInfo(i)
-                if info and not info.isHeader and not info.isHidden and (not info.isComplete or info.isComplete == 0) then
-                    hasIncomplete = true
-                    break
-                end
-            end
-        end
-        if hasIncomplete then
-            showIcon = true
-            displayText = "?"
-            displayColor = SQPSettings.killColor or {1, 0.82, 0}
-            Q.hasItem = false
-            Q.questType = 1
-        end
-    end
-
-    Q.questRelatedOnly = questRelatedOnly
+    Q.questRelatedOnly = false
     do
         local diagKey = tostring(progressGlob) .. "|" .. tostring(questType) .. "|" ..
             tostring(objectiveCount) .. "|" .. tostring(itemsNeeded) .. "|" .. tostring(displayText)
         if SQPSettings.debug and (unitID == "target" or unitID == "mouseover" or plate._sqpDiagKey ~= diagKey) then
             plate._sqpDiagKey = diagKey
-            self:PrintMessage(format("[diag] %s: show=%s text=%s type=%s kills=%s items=%s relatedOnly=%s",
+            self:PrintMessage(format("[diag] %s: show=%s text=%s type=%s kills=%s items=%s",
                 tostring(unitID), tostring(showIcon), tostring(displayText), tostring(questType),
-                tostring(objectiveCount), tostring(itemsNeeded), tostring(questRelatedOnly)), "DEBUG")
+                tostring(objectiveCount), tostring(itemsNeeded)), "DEBUG")
         end
     end
 
@@ -652,7 +610,6 @@ function SQP:UpdateQuestIcon(plate, unitID)
         if not Q:IsVisible() then
             Q.ani:Stop()
             Q:Show()
-            if SQPSettings.showQuestMarker ~= false then Q.ani:Play() end
             if Q.icon then
                 Q.icon:SetVertexColor(1, 1, 1, 1)
             end

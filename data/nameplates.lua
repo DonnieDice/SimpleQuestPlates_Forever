@@ -154,6 +154,32 @@ function SQP:SyncQuestPulses(questFrame)
     for _, p in ipairs(active) do p:Play() end
 end
 
+-- Toast options apply to existing plates as well as plates created later.
+function SQP:ApplyQuestToastSettings(questFrame, replay)
+    if not questFrame or not questFrame.qmark then return end
+    local size = SQPSettings.questMarkerSize or 28
+    local duration = SQPSettings.toastDuration or 1
+    questFrame.qmark:SetSize(size, size)
+    if questFrame.toastTranslation then
+        questFrame.toastTranslation:SetOffset(0, SQPSettings.toastHeight or 20)
+        questFrame.toastTranslation:SetDuration(duration)
+    end
+    if questFrame.toastFade then questFrame.toastFade:SetDuration(duration) end
+    if SQPSettings.showQuestMarker == false then
+        if questFrame.ani and questFrame.ani:IsPlaying() then questFrame.ani:Stop() end
+        questFrame.qmark:SetAlpha(0)
+    elseif replay and questFrame:IsShown() and questFrame.ani then
+        if questFrame.ani:IsPlaying() then questFrame.ani:Stop() end
+        questFrame.ani:Play()
+    end
+end
+
+function SQP:RefreshQuestToastSettings(replay)
+    for _, questFrame in pairs(self.QuestPlates or {}) do
+        self:ApplyQuestToastSettings(questFrame, replay)
+    end
+end
+
 function SQP:ClearQuestPulseSync(questFrame)
     if questFrame then questFrame._pulseSyncSignature = nil end
 end
@@ -412,12 +438,13 @@ function SQP:CreateQuestPlate(nameplate)
     alpha2:SetSmoothing('OUT')
     
     questFrame.ani = group
+    questFrame.toastTranslation = translation
+    questFrame.toastFade = alpha2
     
     questFrame:HookScript('OnShow', function(self)
+        SQP:ApplyQuestToastSettings(self)
         if SQPSettings.showQuestMarker ~= false then
             group:Play()
-        else
-            qmark:SetAlpha(0)
         end
         if SQPSettings.syncAnimations then
             SQP:SyncQuestPulses(self)
@@ -627,10 +654,7 @@ function SQP:RefreshAllNameplates()
             questFrame:SetScale(SQPSettings.scale or 1)
             self:RefreshQuestPlateAnchor(plate, true)
 
-            if questFrame.qmark then
-                local qms = SQPSettings.questMarkerSize or 28
-                questFrame.qmark:SetSize(qms, qms)
-            end
+            self:ApplyQuestToastSettings(questFrame)
 
             if questFrame.killIcon then
                 self:AnchorTaskIcon(questFrame.killIcon, questFrame.icon, "kill")

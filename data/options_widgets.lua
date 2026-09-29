@@ -437,6 +437,7 @@ function SQP:CreateStyledCheckbox(parent, text)
     local UI = assert(_G.RGXUI, "SQP: RGXUI unavailable")
     local frame = UI:CreateCheckbox(parent, text)
     SQP:ApplyDefaultFont(frame.label)
+    frame.label:SetTextColor(1.0, 0.82, 0.0)
     return frame
 end
 
