@@ -1,3 +1,8 @@
+# 2.1.7-forever.beta.4 - 2026-09-29
+
+## Changes
+- Rewrote `AGENTS.md` with the fork's actual facts plus the framework-build and interface-versioning directives; TOC metadata cleaned to the sanctioned author field.
+
 # 2.1.7-forever.beta.3 - 2026-09-28
 
 ## Changes
