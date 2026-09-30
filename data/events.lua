@@ -124,6 +124,7 @@ function SQP:QUEST_LOG_UPDATE()
 	RGX:After(0.3, function()
 		questUpdatePending = false
 		self:CacheQuestIndexes()
+		self:ReevaluateActivePlates()
 		self:RefreshAllNameplates()
 	end)
 end
@@ -146,11 +147,13 @@ function SQP:QUEST_REMOVED(questID)
         end
     end
     self:UNIT_QUEST_LOG_CHANGED('player')
+    self:ReevaluateActivePlates()
     self:RefreshAllNameplates()
 end
 
 function SQP:QUEST_COMPLETE()
     -- Quest objectives all met — refresh immediately so icons hide promptly
+    self:ReevaluateActivePlates()
     self:RefreshAllNameplates()
 end
 

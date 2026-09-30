@@ -493,6 +493,9 @@ function SQP:OnPlateShow(nameplate, unitID)
 
     -- Store unit ID on nameplate itself
     nameplate._unitID = unitID
+    -- Stable plate token: target/mouseover handlers overwrite _unitID, so
+    -- quest re-evaluation needs the original nameplate unit token.
+    nameplate._plateUnitID = unitID
     self.ActiveNameplates[nameplate] = nameplate
 
     self:EnsureQuestPlate(nameplate)
@@ -604,6 +607,19 @@ function SQP:UpdateQuestFont(fontString, outlineFontString, percentFontString, p
     end
 
     reportSlowPath("UpdateQuestFont", started)
+end
+
+-- Re-run quest detection for every visible plate. Quest data changes do not
+-- re-fire NAME_PLATE_UNIT_ADDED, so without this, mobs already on screen keep
+-- stale quest state until their plates are recreated (e.g. toggling the addon
+-- off and on) — icons for newly accepted or completed quests never appeared.
+function SQP:ReevaluateActivePlates()
+    for plate in pairs(self.ActiveNameplates) do
+        local unitID = plate._plateUnitID or plate._unitID
+        if unitID and UnitExists(unitID) then
+            self:UpdateQuestIcon(plate, unitID)
+        end
+    end
 end
 
 -- Refresh all nameplate positions and settings

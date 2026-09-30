@@ -321,6 +321,63 @@ function SQP:CreatePreviewSection(parent)
             or plate.UnitFrame.nameText
     end
 
+    -- Sample the geometry of a live nameplate once, then hold it for the
+    -- session. All plates on a client share one size, so the sampled shell
+    -- stays stable while tuning — and matches the geometry the in-world
+    -- anchor math actually uses.
+    local function SampleLiveGeometry()
+        local refPlate = GetReferenceNameplate()
+        if not refPlate then return nil end
+
+        local plateWidth = Clamp(floor(GetFrameDimension(refPlate, "GetWidth", 140) + 0.5), 80, 260)
+        local plateHeight = Clamp(floor(GetFrameDimension(refPlate, "GetHeight", 38) + 0.5), 24, 80)
+
+        local healthWidth, healthHeight = 110, 11
+        local refHealth = GetReferenceHealthBar(refPlate)
+        local refHealthWidth = GetFrameDimension(refHealth, "GetWidth", nil)
+        local refHealthHeight = GetFrameDimension(refHealth, "GetHeight", nil)
+        if refHealthWidth and refHealthHeight then
+            healthWidth = Clamp(floor(refHealthWidth + 0.5), 70, 240)
+            healthHeight = Clamp(floor(refHealthHeight + 0.5), 6, 24)
+        else
+            healthWidth = Clamp(plateWidth - 12, 70, 240)
+        end
+
+        -- Unified mode anchors icons to the real HealthBarsContainer, so the
+        -- mock bar must mirror the CONTAINER's size and position within the
+        -- plate — not just the visible bar — for tuned offsets to transfer
+        -- 1:1 to live plates.
+        local healthOffsetX, healthOffsetY
+        if SQPSettings.unifiedNameplates and SQP.GetPlateAnchorTarget then
+            local okAnchor, refAnchor = pcall(SQP.GetPlateAnchorTarget, SQP, refPlate)
+            if okAnchor and refAnchor and refAnchor ~= refPlate then
+                local anchorWidth = GetFrameDimension(refAnchor, "GetWidth", nil)
+                local anchorHeight = GetFrameDimension(refAnchor, "GetHeight", nil)
+                if anchorWidth and anchorHeight then
+                    healthWidth = Clamp(floor(anchorWidth + 0.5), 70, 240)
+                    healthHeight = Clamp(floor(anchorHeight + 0.5), 6, 24)
+                end
+                local plateLeft = GetFrameDimension(refPlate, "GetLeft", nil)
+                local plateBottom = GetFrameDimension(refPlate, "GetBottom", nil)
+                local anchorLeft = GetFrameDimension(refAnchor, "GetLeft", nil)
+                local anchorBottom = GetFrameDimension(refAnchor, "GetBottom", nil)
+                if plateLeft and plateBottom and anchorLeft and anchorBottom then
+                    healthOffsetX = anchorLeft - plateLeft
+                    healthOffsetY = anchorBottom - plateBottom
+                end
+            end
+        end
+
+        return {
+            plateWidth = plateWidth,
+            plateHeight = plateHeight,
+            healthWidth = healthWidth,
+            healthHeight = healthHeight,
+            healthOffsetX = healthOffsetX,
+            healthOffsetY = healthOffsetY,
+        }
+    end
+
     -- Stop preview pulses when panel hides
     previewFrame:SetScript("OnHide", function(self)
         if self.iconPulse and self.iconPulse:IsPlaying() then self.iconPulse:Stop() end
@@ -341,25 +398,29 @@ function SQP:CreatePreviewSection(parent)
         -- Keep the mock nameplate visible; the addon switch controls only
         -- SQP's quest overlay, just as it does on live nameplates.
         questFrame:SetShown(SQPSettings.enabled ~= false)
-        -- Sync preview nameplate + health bar size to a real nameplate when possible.
+        -- Geometry: sample-and-hold from a live plate; defaults only until
+        -- the first plate is seen this session.
+        local sample = previewFrame._geometrySample
+        if not sample then
+            sample = SampleLiveGeometry()
+            previewFrame._geometrySample = sample
+        end
+
         local plateWidth, plateHeight = 140, 38
         local healthWidth, healthHeight = 110, 11
-        local refPlate = nil
-        if refPlate then
-            local refPlateWidth = GetFrameDimension(refPlate, "GetWidth", plateWidth)
-            local refPlateHeight = GetFrameDimension(refPlate, "GetHeight", plateHeight)
-            plateWidth = Clamp(floor(refPlateWidth + 0.5), 80, 260)
-            plateHeight = Clamp(floor(refPlateHeight + 0.5), 24, 80)
+        local healthOffsetX, healthOffsetY
+        if sample then
+            plateWidth = sample.plateWidth
+            plateHeight = sample.plateHeight
+            healthWidth = sample.healthWidth
+            healthHeight = sample.healthHeight
+            healthOffsetX = sample.healthOffsetX
+            healthOffsetY = sample.healthOffsetY
+        end
 
+        local refPlate = GetReferenceNameplate()
+        if refPlate then
             local refHealth = GetReferenceHealthBar(refPlate)
-            local refHealthWidth = GetFrameDimension(refHealth, "GetWidth", nil)
-            local refHealthHeight = GetFrameDimension(refHealth, "GetHeight", nil)
-            if refHealthWidth and refHealthHeight then
-                healthWidth = Clamp(floor(refHealthWidth + 0.5), 70, 240)
-                healthHeight = Clamp(floor(refHealthHeight + 0.5), 6, 24)
-            else
-                healthWidth = Clamp(plateWidth - 12, 70, 240)
-            end
 
             local statusTexture = refHealth and refHealth.GetStatusBarTexture and refHealth:GetStatusBarTexture()
             if statusTexture and statusTexture.GetTexture then
@@ -391,7 +452,15 @@ function SQP:CreatePreviewSection(parent)
         end
 
         nameplate:SetSize(plateWidth, plateHeight)
+        healthBar:ClearAllPoints()
         healthBar:SetSize(healthWidth, healthHeight)
+        if healthOffsetX and healthOffsetY then
+            -- Place the mock bar exactly where the real anchor target sits
+            -- within the plate, so offsets transfer 1:1 to live plates.
+            healthBar:SetPoint("BOTTOMLEFT", nameplate, "BOTTOMLEFT", healthOffsetX, healthOffsetY)
+        else
+            healthBar:SetPoint("CENTER", nameplate, "CENTER", 0, 0)
+        end
 
         icon:SetSize(28, 22)
         icon:ClearAllPoints()
