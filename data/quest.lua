@@ -120,7 +120,10 @@ local function ObjectiveTextMatchesUnit(objText, unitNameNorm, objectiveType)
     end
     if overlap == 0 then return false end
     if objectiveType == "item" or objectiveType == "object" then
-        return overlap >= 1
+        -- A single shared junk token ("fin", "oil", "bone") must not mark a
+        -- mob that does not actually drop the objective item on its tooltip.
+        -- Two tokens or full containment are required on the fallback path.
+        return overlap >= 2
     end
     if #listA <= 1 or #listB <= 1 then
         return overlap >= 1
@@ -349,8 +352,9 @@ function SQP:GetQuestProgress(unitID)
     end
 
     if SQPSettings.debug and (unitID == "target" or unitID == "mouseover") then
-        self:PrintMessage(format("[diag] %s: result glob=%s type=%s kills=%s items=%s", tostring(unitName),
-            tostring(progressGlob), tostring(questType), tostring(objectiveCount), tostring(itemsNeeded)), "DEBUG")
+        self:PrintMessage(format("[diag] %s: result glob=%s type=%s kills=%s items=%s path=%s", tostring(unitName),
+            tostring(progressGlob), tostring(questType), tostring(objectiveCount), tostring(itemsNeeded),
+            progressGlob and (#tooltipLines > 0 and "tooltip" or "fallback") or "none"), "DEBUG")
     end
     return progressGlob, progressGlob and (questType or 1) or nil, objectiveCount, itemsNeeded, questIdForItems
 end

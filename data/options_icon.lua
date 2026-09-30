@@ -29,7 +29,7 @@ function SQP:CreateIconOptions(content)
 		min = -100,
 		max = 100,
 		step = 1,
-		default = 16,
+		default = 0,
 		storage = SQPSettings,
 		width = 160,
 		onChange = function(value)
@@ -48,7 +48,7 @@ function SQP:CreateIconOptions(content)
 		min = -100,
 		max = 100,
 		step = 1,
-		default = -4,
+		default = 0,
 		storage = SQPSettings,
 		width = 160,
 		onChange = function(value)
@@ -111,11 +111,12 @@ function SQP:CreateIconOptions(content)
     rightYOffset = rightYOffset - 22
 
 	-- Global Scale
+	-- Range 0.5–1.5 centers the slider on 1; 1.1 is the baseline default.
 	local scaleSlider = self:CreateStyledSlider(rightColumn, {
 		key = "scale",
 		label = self.L["OPTIONS_GLOBAL_SCALE"] or "Global Scale",
 		min = 0.5,
-		max = 3.0,
+		max = 1.5,
 		step = 0.1,
 		default = 1.1,
 		storage = SQPSettings,
