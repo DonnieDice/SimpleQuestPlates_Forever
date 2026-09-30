@@ -111,8 +111,9 @@ local function BuildDisplayPage(leftColumn, rightColumn, generalCard)
         local c = posCard.content
         local yOffset = -8
 
+        -- Range 0.5–1.5 centers the slider on 1; 1.1 is the baseline default.
         local scaleSlider = SQP:CreateStyledSlider(c, {
-            key = "scale", label = "Scale", min = 0.5, max = 3.0, step = 0.1,
+            key = "scale", label = "Scale", min = 0.5, max = 1.5, step = 0.1,
             default = 1.1, storage = SQPSettings, suffix = "", width = 160,
             onChange = function(value) SQP:RefreshAllNameplates() end,
         })

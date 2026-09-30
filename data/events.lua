@@ -35,7 +35,7 @@ function SQP:ADDON_LOADED(addon)
     for plate, questFrame in pairs(self.QuestPlates) do
         if questFrame then
             self:RefreshQuestPlateAnchor(plate)
-            questFrame:SetScale(SQPSettings.scale or 1)
+            questFrame:SetScale(SQPSettings.scale or 1.1)
         end
     end
     

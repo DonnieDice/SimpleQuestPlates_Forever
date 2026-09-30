@@ -495,7 +495,7 @@ function SQP:CreatePreviewSection(parent)
             self.lootIcon:SetSize(SQPSettings.lootIconSize or 14, SQPSettings.lootIconSize or 14)
         end
 
-        questFrame:SetScale(SQPSettings.scale or 1)
+        questFrame:SetScale(SQPSettings.scale or 1.1)
 
         -- Update font with current quest type. Wrap in pcall so a font
         -- resolution failure (e.g. the registry not yet populated) cannot

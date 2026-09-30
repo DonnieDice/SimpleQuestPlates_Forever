@@ -298,7 +298,7 @@ function SQP:CreateQuestPlate(nameplate)
     end
     
     -- Apply scale to the quest frame
-    questFrame:SetScale(SQPSettings.scale or 1)
+    questFrame:SetScale(SQPSettings.scale or 1.1)
     
     -- Item texture
     local itemTexture = questFrame:CreateTexture(nil, nil, nil, 1)
@@ -640,7 +640,7 @@ function SQP:RefreshAllNameplates()
                 return value ~= false
             end
 
-            questFrame:SetScale(SQPSettings.scale or 1)
+            questFrame:SetScale(SQPSettings.scale or 1.1)
             self:RefreshQuestPlateAnchor(plate, true)
 
             if questFrame.qmark then
