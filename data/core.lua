@@ -114,8 +114,8 @@ end
 SQP.DEFAULTS = {
     enabled = true,
     scale = 1.1,
-    offsetX = 16,
-    offsetY = -4,
+    offsetX = 0,
+    offsetY = 0,
     anchor = "RIGHT",
     relativeTo = "LEFT",
     unifiedNameplates = false,
