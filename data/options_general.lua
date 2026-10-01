@@ -289,7 +289,7 @@ local function BuildAnimationPage(page)
 
         local toastDurationSlider = SQP:CreateStyledSlider(c, {
             key = "toastDuration", label = "Toast Duration", min = 0.3, max = 2.5, step = 0.1,
-            default = 1.0, storage = SQPSettings, suffix = "s", width = 160,
+            default = 1.3, storage = SQPSettings, suffix = "s", width = 160,
         })
         toastDurationSlider:SetPoint("TOPLEFT", 8, yOffset)
         toastDurationSlider:SetPoint("TOPRIGHT", c, "TOPRIGHT", -8, yOffset)
@@ -297,9 +297,22 @@ local function BuildAnimationPage(page)
         SQP.optionControls.toastDurationLabel = toastDurationSlider.valueLabel
         yOffset = yOffset - 42
 
+        -- Selecting the toast card's preview is the only way the toast replays;
+        -- typing random animation options must not fire it. Toast stays
+        -- selected only while this tab is open and the feature is enabled.
+        local toastPreview = SQP:CreateStyledButton(c, "Preview toast", 88, 20)
+        toastPreview:SetPoint("TOPLEFT", 8, yOffset)
+        SQP.optionControls.toastPreviewButton = toastPreview
+        toastPreview:SetScript("OnClick", function()
+            if SQP.previewFrame and SQP.previewFrame.questFrame then
+                SQP:SetQuestToastSelected(SQP.previewFrame.questFrame, true)
+            end
+        end)
+        yOffset = yOffset - 28
+
         local toastHeightSlider = SQP:CreateStyledSlider(c, {
             key = "toastHeight", label = "Toast Height", min = 0, max = 60, step = 2,
-            default = 20, storage = SQPSettings, suffix = "", width = 160,
+            default = 30, storage = SQPSettings, suffix = "", width = 160,
         })
         toastHeightSlider:SetPoint("TOPLEFT", 8, yOffset)
         toastHeightSlider:SetPoint("TOPRIGHT", c, "TOPRIGHT", -8, yOffset)
@@ -309,7 +322,7 @@ local function BuildAnimationPage(page)
 
         local toastSizeSlider = SQP:CreateStyledSlider(c, {
             key = "questMarkerSize", label = "Toast Size", min = 12, max = 48, step = 2,
-            default = 28, storage = SQPSettings, suffix = "", width = 160,
+            default = 40, storage = SQPSettings, suffix = "", width = 160,
             onChange = function(value) SQP:RefreshAllNameplates() end,
         })
         toastSizeSlider:SetPoint("TOPLEFT", 8, yOffset)
@@ -317,6 +330,48 @@ local function BuildAnimationPage(page)
         SQP.optionControls.questMarkerSize = toastSizeSlider
         SQP.optionControls.questMarkerSizeLabel = toastSizeSlider.valueLabel
         toastCard:FitContent()
+
+        -- Bottom of the card: restores every SQP animation setting, not just
+        -- the toast trio. Baselines match SQP.DEFAULTS exactly.
+        local animationDefaults = {
+            animateQuestIcons = true,
+            animateMainIcons = false,
+            syncAnimations = false,
+            useGlobalAnimationSettings = false,
+            globalAnimationEnabled = true,
+            animationCombatMode = "always",
+            globalAnimationIntensity = 100,
+            killAnimationIntensity = 100,
+            lootAnimationIntensity = 100,
+            percentAnimationIntensity = 100,
+            showQuestMarker = true,
+            questMarkerSize = 40,
+            toastDuration = 1.3,
+            toastHeight = 30,
+        }
+        local resetAll = SQP:CreateStyledButton(c, "Reset All Animation Settings", 190, 20)
+        resetAll:SetScript("OnClick", function()
+            for key, value in pairs(animationDefaults) do
+                SQP:SetSetting(key, value)
+            end
+            for key, control in pairs(SQP.optionControls or {}) do
+                if animationDefaults[key] ~= nil then
+                    if control.SetChecked then
+                        control:SetChecked(animationDefaults[key] == true)
+                    elseif control.SetValue then
+                        control.SetValue(animationDefaults[key])
+                    end
+                end
+            end
+            SQP:RefreshAllNameplates()
+            if SQP.previewFrame and SQP.previewFrame.UpdatePreview then
+                SQP.previewFrame:UpdatePreview()
+            end
+        end)
+        resetAll:ClearAllPoints()
+        resetAll:SetPoint("BOTTOMLEFT", c, "BOTTOMLEFT", 8, 8)
+        resetAll:SetPoint("BOTTOMRIGHT", c, "BOTTOMRIGHT", -8, 8)
+        SQP.optionControls.resetAllAnimations = resetAll
     end
 end
 

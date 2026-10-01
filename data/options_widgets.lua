@@ -73,6 +73,53 @@ function SQP:CreateStyledSlider(parent, options)
 		insets = {left = 3, right = 3, top = 6, bottom = 6}
 	})
 	slider:SetThumbTexture("Interface\\Buttons\\UI-SliderBar-Button-Horizontal")
+
+	-- Persisted value binding + live thumb restore. Old fallback returned a bare
+	-- slider whose thumb always defaulted to the left until someone dragged it.
+	local storage = (options and options.storage) or {}
+	local key = (options and options.key) or "value"
+	local default = options and options.default
+	local onChange = (options and options.onChange) or function() end
+	local suffix = (options and options.suffix) or ""
+	local valueLabel = slider:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+	valueLabel:SetPoint("TOP", slider, "BOTTOM", 0, -2)
+	slider.value = valueLabel
+	slider.valueLabel = valueLabel
+
+	local function RefreshFromStorage()
+		local minV, maxV = slider:GetMinMaxValues()
+		local step = slider:GetValueStep() or 1
+		local value = storage[key]
+		if value == nil then value = default end
+		if value == nil then value = minV end
+		local snapped = math.floor(value / step + 0.5) * step
+		snapped = math.max(minV, math.min(maxV, snapped))
+		slider:SetValue(snapped)
+		valueLabel:SetText(tostring(snapped) .. suffix)
+		local width = slider:GetWidth()
+		local thumb = slider:GetThumbTexture()
+		if width > 0 and thumb then
+			local pct = (maxV == minV) and 0 or ((snapped - minV) / (maxV - minV))
+			thumb:ClearAllPoints()
+			thumb:SetPoint("CENTER", slider, "LEFT", pct * width, 0)
+		end
+	end
+
+	slider:SetScript("OnValueChanged", function(self, value)
+		local minV, maxV = self:GetMinMaxValues()
+		local step = self:GetValueStep() or 1
+		value = math.max(minV, math.min(maxV, math.floor(value / step + 0.5) * step))
+		storage[key] = value
+		valueLabel:SetText(tostring(value) .. suffix)
+		onChange(value)
+	end)
+	slider.SetValue = function(self, value) storage[key] = value RefreshFromStorage() end
+	slider.Refresh = RefreshFromStorage
+	RefreshFromStorage()
+	if slider.HookScript then
+		slider:HookScript("OnShow", RefreshFromStorage)
+		slider:HookScript("OnSizeChanged", function() RefreshFromStorage() end)
+	end
 	return slider
 end
 

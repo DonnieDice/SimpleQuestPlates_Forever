@@ -227,24 +227,37 @@ function SQP:CreateQuestToast(questFrame, icon)
     questFrame.ani = group
     questFrame.toastTranslation = translation
     questFrame.toastFade = fade
+    group:SetLooping("NONE")
     self:UpdateQuestToast(questFrame, false)
     return group
 end
 
+function SQP:SetQuestToastSelected(questFrame, selected)
+    questFrame.toastSelected = selected and true or nil
+    self:UpdateQuestToast(questFrame, true)
+end
+
 function SQP:UpdateQuestToast(questFrame, replay)
     if not questFrame.qmark or not questFrame.ani then return end
-    local size = SQPSettings.questMarkerSize or 28
-    local duration = SQPSettings.toastDuration or 1
+    -- Baselines shared with SQP.DEFAULTS: duration 1.3s, offset 30, size 40.
+    local size = SQPSettings.questMarkerSize or 40
+    local duration = SQPSettings.toastDuration or 1.3
     questFrame.qmark:SetSize(size, size)
-    questFrame.toastTranslation:SetOffset(0, SQPSettings.toastHeight or 20)
+    questFrame.toastTranslation:SetOffset(0, SQPSettings.toastHeight or 30)
     questFrame.toastTranslation:SetDuration(duration)
     questFrame.toastFade:SetDuration(duration)
-    if SQPSettings.enabled == false or SQPSettings.showQuestMarker == false then
-        questFrame.ani:Stop()
+
+    local group = questFrame.ani
+    if SQPSettings.enabled == false or SQPSettings.showQuestMarker == false
+        or not questFrame.toastSelected then
+        if group:IsPlaying() then group:Stop() end
         questFrame.qmark:SetAlpha(0)
-    elseif replay then
-        questFrame.ani:Stop()
-        questFrame.ani:Play()
+    else
+        group:SetLooping("REPEAT")
+        if replay or not group:IsPlaying() then
+            if group:IsPlaying() then group:Stop() end
+            group:Play()
+        end
     end
 end
 
@@ -429,6 +442,9 @@ function SQP:CreateQuestPlate(nameplate)
     
     -- Quest complete animation (quick "pops" when the quest frame shows)
     self:CreateQuestToast(questFrame, icon)
+    -- Live overlays play on show when the feature is enabled; the options
+    -- preview stays silent until it is explicitly selected as the toast target.
+    questFrame.toastSelected = true
     
     questFrame:HookScript('OnShow', function(self)
         SQP:UpdateQuestToast(self, true)

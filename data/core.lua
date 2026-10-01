@@ -138,14 +138,14 @@ SQP.DEFAULTS = {
     -- default; per-type keys only exist once a user overrides them on the
     -- Kill / Loot / Percent tabs.
     showQuestMarker = true,          -- Animated quest marker on plate show
-    questMarkerSize = 28,
+    questMarkerSize = 40,
     percentSignSide = "right",       -- right | left
     killIconSide = "left",           -- kill task icon badge side: left | right
     lootIconSide = "right",          -- loot task icon badge side: left | right
     showTargetGlow = true,           -- (retired: never touch Blizzard's selection highlight)
     syncAnimations = false,
-    toastDuration = 1.0,
-    toastHeight = 20,          -- play all task/main pulses in phase
+    toastDuration = 1.3,
+    toastHeight = 30,          -- play all task/main pulses in phase; new baseline
     animateQuestIcon = false,
     animateQuestIcons = true,
     animateMainIcons = false, -- Global main-icon option; per-type toggles apply when off
