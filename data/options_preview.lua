@@ -124,6 +124,7 @@ function SQP:CreatePreviewSection(parent)
     icon:SetSize(28, 22)
     icon:SetTexture('Interface\\QuestFrame\\AutoQuest-Parts')
     icon:SetTexCoord(0.30273438, 0.41992188, 0.015625, 0.953125)
+    SQP:CreateQuestToast(questFrame, icon)
 
     -- Quest count text
     local iconText = questFrame:CreateFontString(nil, "OVERLAY", "SystemFont_Outline_Small")
@@ -331,6 +332,8 @@ function SQP:CreatePreviewSection(parent)
 
     -- Stop preview pulses when panel hides
     previewFrame:SetScript("OnHide", function(self)
+        if questFrame.ani then questFrame.ani:Stop() end
+        if questFrame.qmark then questFrame.qmark:SetAlpha(0) end
         if self.iconPulse and self.iconPulse:IsPlaying() then self.iconPulse:Stop() end
         if self.percentPulse and self.percentPulse:IsPlaying() then self.percentPulse:Stop() end
         if self.percentOutlinePulse and self.percentOutlinePulse:IsPlaying() then self.percentOutlinePulse:Stop() end
@@ -686,6 +689,7 @@ function SQP:CreatePreviewSection(parent)
         else
             SQP:ClearQuestPulseSync(self)
         end
+        SQP:UpdateQuestToast(questFrame, self:IsShown())
     end
 
     -- Restart animation when the panel becomes visible again

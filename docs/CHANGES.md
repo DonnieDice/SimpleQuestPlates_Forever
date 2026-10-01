@@ -1,3 +1,11 @@
+# 2.1.7-forever.beta.5 - Unreleased test build
+
+## Changes
+- Construct the persistent DB after defining defaults; use framework profile reset without aliasing mutable default colors.
+- Preserve explicit per-type font sizes and outline choices during reload migration.
+- Preview the enabled quest toast through the same animation construction/settings path as live overlays; stop it when disabled or hidden.
+- Test with the paired framework hidden-scrollbar and slider-restoration fixes; no release tag created.
+
 # 2.1.7-forever.beta.4 - 2026-09-29
 
 ## Changes
