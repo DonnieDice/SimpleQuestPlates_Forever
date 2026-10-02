@@ -176,9 +176,27 @@ local function GetQuestObjectiveInfo(questID, index, isComplete)
     end
 end
 
--- Get quest progress from unit tooltip
+-- Get quest progress from unit tooltip. Tooltip scans are one of the most
+-- expensive per-frame calls an addon can make. Cache the computed result per
+-- unit GUID so plate events, target changes, and ticks can reuse it; refresh
+-- only when the quest log revision changes or the per-unit entry has expired
+-- (world-quest progress updates need a bounded refresh, so entries age out).
 function SQP:GetQuestProgress(unitID)
     if not unitID or not UnitExists(unitID) then return end
+
+    local guid
+    if UnitGUID then guid = UnitGUID(unitID) end
+    self._questProgressCache = self._questProgressCache or {}
+    self._questCacheRev = self._questCacheRev or 0
+    local QUICK_TTL = 0.5
+    if guid then
+        local entry = self._questProgressCache[guid]
+        if entry and entry.rev == self._questCacheRev
+            and (entry.time + QUICK_TTL) > now() then
+            return entry.progressGlob, entry.questType, entry.objectiveCount,
+                entry.itemsNeeded, entry.questID
+        end
+    end
 
     local nameOk, unitName = pcall(UnitName, unitID)
     if not nameOk or not unitName then return end
@@ -356,7 +374,16 @@ function SQP:GetQuestProgress(unitID)
             tostring(progressGlob), tostring(questType), tostring(objectiveCount), tostring(itemsNeeded),
             progressGlob and (#tooltipLines > 0 and "tooltip" or "fallback") or "none"), "DEBUG")
     end
-    return progressGlob, progressGlob and (questType or 1) or nil, objectiveCount, itemsNeeded, questIdForItems
+    local resultQuestType = progressGlob and (questType or 1) or nil
+    if guid then
+        self._questProgressCache[guid] = {
+            rev = self._questCacheRev, time = now(),
+            progressGlob = progressGlob, questType = resultQuestType,
+            objectiveCount = objectiveCount, itemsNeeded = itemsNeeded,
+            questID = questIdForItems,
+        }
+    end
+    return progressGlob, resultQuestType, objectiveCount, itemsNeeded, questIdForItems
 end
 
 -- Update quest icon on nameplate
@@ -777,6 +804,11 @@ end
 -- Cache quest indexes for faster lookups
 function SQP:CacheQuestIndexes()
     wipe(self.QuestLogIndex)
+    -- Bump the progress-cache revision whenever the quest log is rewalked. The
+    -- tooltip scan is one of the most expensive calls an addon can make; only
+    -- quest state changes force a fresh scan, and the plate event storms reuse
+    -- the stored result.
+    self._questCacheRev = (self._questCacheRev or 0) + 1
     
     -- Use compatibility layer for quest log
     if SQP.Compat.GetNumQuestLogEntries then
