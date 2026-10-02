@@ -192,7 +192,7 @@ function SQP:GetQuestProgress(unitID)
     if guid then
         local entry = self._questProgressCache[guid]
         if entry and entry.rev == self._questCacheRev
-            and (entry.time + QUICK_TTL) > now() then
+            and (entry.time + QUICK_TTL) > nowSeconds() then
             return entry.progressGlob, entry.questType, entry.objectiveCount,
                 entry.itemsNeeded, entry.questID
         end
@@ -377,7 +377,7 @@ function SQP:GetQuestProgress(unitID)
     local resultQuestType = progressGlob and (questType or 1) or nil
     if guid then
         self._questProgressCache[guid] = {
-            rev = self._questCacheRev, time = now(),
+            rev = self._questCacheRev, time = nowSeconds(),
             progressGlob = progressGlob, questType = resultQuestType,
             objectiveCount = objectiveCount, itemsNeeded = itemsNeeded,
             questID = questIdForItems,
