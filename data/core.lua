@@ -9,14 +9,6 @@ local addonName, SQP = ...
 
 local RGX = assert(_G.RGXFramework, "SQP: RGX-Framework not loaded")
 
--- Initialize RGX Database for settings
-SQP.db = RGX:NewDatabase("SQPForeverSettings", SQP.DEFAULTS, {
-	profileIsGlobal = true,
-})
-
--- Flavor variants must use flavor-specific SavedVariables (never share between variants)
-SQPSettings = SQP.db.global
-
 -- Cache frequently used globals
 local pcall = pcall
 local tonumber = tonumber
@@ -90,7 +82,7 @@ local function GetAddOnMetadataCompat(name, field)
     return nil
 end
 
-SQP.VERSION = "2.1.7-forever.beta.4" -- Addon version (also in TOC file)
+SQP.VERSION = "2.1.7-forever.beta.5" -- Addon version (also in TOC file)
 SQP.NAME = GetAddOnMetadataCompat(addonName, "Title") or addonName or "SimpleQuestPlates"
 SQP.AUTHOR = GetAddOnMetadataCompat(addonName, "Author") or "DonnieDice"
 SQP.LOCALE = GetLocale()
@@ -146,14 +138,14 @@ SQP.DEFAULTS = {
     -- default; per-type keys only exist once a user overrides them on the
     -- Kill / Loot / Percent tabs.
     showQuestMarker = true,          -- Animated quest marker on plate show
-    questMarkerSize = 28,
+    questMarkerSize = 40,
     percentSignSide = "right",       -- right | left
     killIconSide = "left",           -- kill task icon badge side: left | right
     lootIconSide = "right",          -- loot task icon badge side: left | right
     showTargetGlow = true,           -- (retired: never touch Blizzard's selection highlight)
     syncAnimations = false,
-    toastDuration = 1.0,
-    toastHeight = 20,          -- play all task/main pulses in phase
+    toastDuration = 1.3,
+    toastHeight = 30,          -- play all task/main pulses in phase; new baseline
     animateQuestIcon = false,
     animateQuestIcons = true,
     animateMainIcons = false, -- Global main-icon option; per-type toggles apply when off
@@ -203,6 +195,22 @@ SQP.DEFAULTS = {
 }
 
 SQP.defaultMinimapAngle = 220
+
+-- Declare defaults before constructing the single persistent database owner.
+SQP.db = RGX:NewDatabase("SQPForeverSettings", SQP.DEFAULTS, {
+    profileIsGlobal = true,
+    onSwitch = function()
+        if SQP.optionsPanel then
+            SQP.optionsPanel:InvalidateAllTabs()
+            SQP.optionsPanel:Refresh()
+        end
+        if SQP.QuestPlates and type(SQP.RefreshAllNameplates) == "function" then
+            SQP:RefreshAllNameplates()
+        end
+    end,
+})
+-- This alias is not the TOC storage global; the declared owner stays raw.
+SQPSettings = SQP.db.global
 
 -- Animation setting helpers
 function SQP:IsAnimationCombatAllowed()
@@ -334,17 +342,12 @@ function SQP:MigrateLegacyFontDefaults(settings)
     if settings.fontFamily == LEGACY_DEFAULT_FONT then
         settings.fontFamily = self.DEFAULTS.fontFamily
     end
-    local legacySize = { kill = 12, loot = 12, percent = 8 }
-    for typeKey, size in pairs(legacySize) do
+    for _, typeKey in ipairs({ "kill", "loot", "percent" }) do
         if settings[typeKey .. "FontFamily"] == LEGACY_DEFAULT_FONT then
             settings[typeKey .. "FontFamily"] = nil
         end
-        if settings[typeKey .. "FontSize"] == size then
-            settings[typeKey .. "FontSize"] = nil
-        end
-        if settings[typeKey .. "FontOutline"] == "" then
-            settings[typeKey .. "FontOutline"] = nil
-        end
+        -- Explicit size/outline choices are user data, even when equal to old
+        -- defaults. There is no evidence they were automatically generated.
     end
 end
 
@@ -447,16 +450,8 @@ end
 
 -- Reset settings to default
 function SQP:ResetSettings()
-	-- Reset to defaults via database
-	local profile = self.db and type(self.db.GetProfile) == "function" and self.db:GetProfile() or nil
-	if type(profile) == "table" then
-		for k in pairs(profile) do
-			profile[k] = nil
-		end
-	end
-	for k, v in pairs(self.DEFAULTS) do
-		SQPSettings[k] = v
-	end
+	-- The framework deep-fills fresh values; never alias nested default tables.
+	if not self.db:ResetProfile() then return end
 	self:PrintMessage(self.L["SETTINGS_RESET"] or "|cff58be81All settings have been reset to defaults|r")
 	self:RefreshAllNameplates()
 end
