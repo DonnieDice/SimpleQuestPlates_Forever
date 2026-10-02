@@ -124,6 +124,10 @@ function SQP:CreatePreviewSection(parent)
     icon:SetSize(28, 22)
     icon:SetTexture('Interface\\QuestFrame\\AutoQuest-Parts')
     icon:SetTexCoord(0.30273438, 0.41992188, 0.015625, 0.953125)
+    -- Preview toast stays silent until the Toast card's own controls select it;
+    -- merely opening Animation or changing other options must not pop the mark.
+    SQP:CreateQuestToast(questFrame, icon)
+    SQP:SetQuestToastSelected(questFrame, false)
 
     -- Quest count text
     local iconText = questFrame:CreateFontString(nil, "OVERLAY", "SystemFont_Outline_Small")
@@ -331,6 +335,9 @@ function SQP:CreatePreviewSection(parent)
 
     -- Stop preview pulses when panel hides
     previewFrame:SetScript("OnHide", function(self)
+        SQP:SetQuestToastSelected(questFrame, false)
+        if questFrame.ani then questFrame.ani:Stop() end
+        if questFrame.qmark then questFrame.qmark:SetAlpha(0) end
         if self.iconPulse and self.iconPulse:IsPlaying() then self.iconPulse:Stop() end
         if self.percentPulse and self.percentPulse:IsPlaying() then self.percentPulse:Stop() end
         if self.percentOutlinePulse and self.percentOutlinePulse:IsPlaying() then self.percentOutlinePulse:Stop() end
@@ -686,6 +693,8 @@ function SQP:CreatePreviewSection(parent)
         else
             SQP:ClearQuestPulseSync(self)
         end
+        -- Generic layout/animation refresh: settings converged, no trigger.
+        SQP:UpdateQuestToast(questFrame, false)
     end
 
     -- Restart animation when the panel becomes visible again
@@ -700,7 +709,13 @@ function SQP:CreatePreviewSection(parent)
         pctTypeBtn:SetAlpha( activeType == "percent" and 1 or 0.45)
     end
     UpdateTypeButtons(nil)
-    previewFrame.clearTypeSelection = function() UpdateTypeButtons(nil) end
+    previewFrame.clearTypeSelection = function()
+        -- Switching preview type/page ends the replay toast; reselect to play.
+        if SQP and SQP.SetQuestToastSelected and questFrame then
+            SQP:SetQuestToastSelected(questFrame, false)
+        end
+        UpdateTypeButtons(nil)
+    end
 
     -- External helpers to switch preview mode from tab clicks and option controls
     previewFrame.activateKillMode = function()

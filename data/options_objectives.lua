@@ -133,19 +133,19 @@ local function CreateObjectiveColorControl(parent, objective, yOffset)
     colorBtn:SetScript("OnClick", function()
         ActivatePreview(objective.preview)
         local r, g, b = unpack(SQPSettings[objective.colorKey] or objective.colorDefault)
-        local info = {r = r, g = g, b = b, hasOpacity = false}
-        info.swatchFunc = function()
-            local nr, ng, nb = ColorPickerFrame:GetColorRGB()
-            SQP:SetSetting(objective.colorKey, {nr, ng, nb})
-            swatch:SetColorTexture(nr, ng, nb)
-            SQP:RefreshAllNameplates()
-        end
-        info.cancelFunc = function()
-            SQP:SetSetting(objective.colorKey, {r, g, b})
-            swatch:SetColorTexture(r, g, b)
-            SQP:RefreshAllNameplates()
-        end
-        ColorPickerFrame:SetupColorPickerAndShow(info)
+        _G.RGXColors:OpenPicker({
+            r = r, g = g, b = b,
+            onChanged = function(_, nr, ng, nb)
+                SQP:SetSetting(objective.colorKey, {nr, ng, nb})
+                swatch:SetColorTexture(nr, ng, nb)
+                SQP:RefreshAllNameplates()
+            end,
+            onCancel = function(_, cr, cg, cb)
+                SQP:SetSetting(objective.colorKey, {cr, cg, cb})
+                swatch:SetColorTexture(cr, cg, cb)
+                SQP:RefreshAllNameplates()
+            end,
+        })
     end)
 
     return yOffset - 28

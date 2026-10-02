@@ -202,6 +202,65 @@ function SQP:GetPlateAnchorTarget(plate)
 end
 
 -- Create quest plate frame for new nameplates
+-- One toast construction/update path for live overlays and the options preview.
+function SQP:CreateQuestToast(questFrame, icon)
+    local qmark = questFrame:CreateTexture(nil, 'OVERLAY', nil, 7)
+    qmark:SetPoint('CENTER', icon)
+    qmark:SetTexture('Interface/WorldMap/UI-WorldMap-QuestIcon')
+    qmark:SetTexCoord(0, 0.56, 0.5, 1)
+    qmark:SetAlpha(0)
+    questFrame.qmark = qmark
+    local group = qmark:CreateAnimationGroup()
+    local alpha = group:CreateAnimation('Alpha')
+    alpha:SetOrder(1)
+    alpha:SetFromAlpha(0)
+    alpha:SetToAlpha(1)
+    alpha:SetDuration(0)
+    local translation = group:CreateAnimation('Translation')
+    translation:SetOrder(1)
+    translation:SetSmoothing('OUT')
+    local fade = group:CreateAnimation('Alpha')
+    fade:SetOrder(1)
+    fade:SetFromAlpha(1)
+    fade:SetToAlpha(0)
+    fade:SetSmoothing('OUT')
+    questFrame.ani = group
+    questFrame.toastTranslation = translation
+    questFrame.toastFade = fade
+    group:SetLooping("NONE")
+    self:UpdateQuestToast(questFrame, false)
+    return group
+end
+
+function SQP:SetQuestToastSelected(questFrame, selected)
+    questFrame.toastSelected = selected and true or nil
+    self:UpdateQuestToast(questFrame, true)
+end
+
+function SQP:UpdateQuestToast(questFrame, replay)
+    if not questFrame.qmark or not questFrame.ani then return end
+    -- Baselines shared with SQP.DEFAULTS: duration 1.3s, offset 30, size 40.
+    local size = SQPSettings.questMarkerSize or 40
+    local duration = SQPSettings.toastDuration or 1.3
+    questFrame.qmark:SetSize(size, size)
+    questFrame.toastTranslation:SetOffset(0, SQPSettings.toastHeight or 30)
+    questFrame.toastTranslation:SetDuration(duration)
+    questFrame.toastFade:SetDuration(duration)
+
+    local group = questFrame.ani
+    if SQPSettings.enabled == false or SQPSettings.showQuestMarker == false
+        or not questFrame.toastSelected then
+        if group:IsPlaying() then group:Stop() end
+        questFrame.qmark:SetAlpha(0)
+    else
+        group:SetLooping("REPEAT")
+        if replay or not group:IsPlaying() then
+            if group:IsPlaying() then group:Stop() end
+            group:Play()
+        end
+    end
+end
+
 function SQP:CreateQuestPlate(nameplate)
     -- Check if nameplate already has quest frame to prevent duplicates
     if self.QuestPlates[nameplate] then
@@ -382,43 +441,13 @@ function SQP:CreateQuestPlate(nameplate)
     questFrame.percentOutlinePulse = CreatePulse(percentIconOutline)
     
     -- Quest complete animation (quick "pops" when the quest frame shows)
-    local qmark = questFrame:CreateTexture(nil, 'OVERLAY', nil, 7)
-    qmark:SetSize(SQPSettings.questMarkerSize or 28, SQPSettings.questMarkerSize or 28)
-    qmark:SetPoint('CENTER', icon)
-    qmark:SetTexture('Interface/WorldMap/UI-WorldMap-QuestIcon')
-    qmark:SetTexCoord(0, 0.56, 0.5, 1)
-    qmark:SetAlpha(0)
-    questFrame.qmark = qmark
-    
-    local duration = SQPSettings.toastDuration or 1
-    local group = qmark:CreateAnimationGroup()
-    local alpha = group:CreateAnimation('Alpha')
-    alpha:SetOrder(1)
-    alpha:SetFromAlpha(0)
-    alpha:SetToAlpha(1)
-    alpha:SetDuration(0)
-    
-    local translation = group:CreateAnimation('Translation')
-    translation:SetOrder(1)
-    translation:SetOffset(0, SQPSettings.toastHeight or 20)
-    translation:SetDuration(duration)
-    translation:SetSmoothing('OUT')
-    
-    local alpha2 = group:CreateAnimation('Alpha')
-    alpha2:SetOrder(1)
-    alpha2:SetFromAlpha(1)
-    alpha2:SetToAlpha(0)
-    alpha2:SetDuration(duration)
-    alpha2:SetSmoothing('OUT')
-    
-    questFrame.ani = group
+    self:CreateQuestToast(questFrame, icon)
+    -- Live overlays play on show when the feature is enabled; the options
+    -- preview stays silent until it is explicitly selected as the toast target.
+    questFrame.toastSelected = true
     
     questFrame:HookScript('OnShow', function(self)
-        if SQPSettings.showQuestMarker ~= false then
-            group:Play()
-        else
-            qmark:SetAlpha(0)
-        end
+        SQP:UpdateQuestToast(self, true)
         if SQPSettings.syncAnimations then
             SQP:SyncQuestPulses(self)
         end
@@ -643,10 +672,7 @@ function SQP:RefreshAllNameplates()
             questFrame:SetScale(SQPSettings.scale or 1.1)
             self:RefreshQuestPlateAnchor(plate, true)
 
-            if questFrame.qmark then
-                local qms = SQPSettings.questMarkerSize or 28
-                questFrame.qmark:SetSize(qms, qms)
-            end
+            self:UpdateQuestToast(questFrame, false)
 
             if questFrame.killIcon then
                 self:AnchorTaskIcon(questFrame.killIcon, questFrame.icon, "kill")
