@@ -70,6 +70,7 @@ lua.doStringSync(`
   function methods:CreateAnimationGroup()return widget(self)end
   function methods:CreateAnimation()return widget(self)end
   function methods:IsPlaying()return false end
+  function methods:GetParent()return self.parent end
   function methods:GetMinMaxValues()return self.min or 0,self.max or 100 end
   function methods:SetMinMaxValues(min,max)self.min=min self.max=max end
   function methods:GetValueStep()return self.step or 1 end
@@ -143,7 +144,30 @@ for(const [name,body]of [
     end
  `],
  ['fallback slider does not recurse and accepts both call forms',`RGXUI=nil local store={amount=12} local s=SQP:CreateStyledSlider(host,{key='amount',storage=store,min=0,max=40,step=1,default=0}) s.SetValue(24) assert(store.amount==24) s:SetValue(30) assert(store.amount==30)`],
- ]){
+  ['client preview template anchors through the live path',`
+    NamePlatePreviewMixin={} NamePlateDriverFrame={}
+    local p=SQP:CreatePreviewSection(host)
+    assert(p.plate,'client preview template not adopted')
+    local unit=CreateFrame('Frame') local container=CreateFrame('Frame',nil,unit)
+    local bar=CreateFrame('StatusBar',nil,container) container.healthBar=bar
+    p.plate.UnitFrame=unit unit.HealthBarsContainer=container unit.healthBar=bar
+    p:UpdatePreview()
+    local overlay=SQP.QuestPlates[p.plate]
+    assert(overlay,'overlay not built through the live factory')
+    assert(overlay.isPreview,'preview overlay not flagged')
+    assert(overlay.icon.point[2]==container,'preview icon not anchored to the real health container')
+    local livePlate=CreateFrame('Frame') livePlate.UnitFrame={HealthBarsContainer=container,healthBar=bar}
+    SQP:CreateQuestPlate(livePlate)
+    local live=SQP.QuestPlates[livePlate]
+    for i=1,5 do assert(overlay.icon.point[i]==live.icon.point[i],'preview/live anchor divergence at '..i) end
+    assert(overlay.w==live.w and overlay.h==live.h,'overlay extent differs from live')
+    SQPSettings.unifiedNameplates=true
+    p:UpdatePreview()
+    overlay=SQP.QuestPlates[p.plate]
+    assert(overlay and overlay:GetParent()==p.plate.UnitFrame,'unified rebuild did not reparent to the UnitFrame')
+    SQPSettings.unifiedNameplates=false
+ `],
+]){
   try{lua.doStringSync(body);console.log('PASS '+name);}catch(e){failed++;console.error('FAIL '+name+': '+e.message);}
 }
 }finally{lua.global.close();}

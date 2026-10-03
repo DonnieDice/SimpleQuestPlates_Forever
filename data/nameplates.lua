@@ -130,6 +130,24 @@ function SQP:AnchorTaskIcon(iconTex, icon, typeKey)
     end
 end
 
+-- The count chip uses the client's own level-indicator rectangle atlas
+-- (verified in the 1.60.1 Forever AtlasInfo dump) so unified plates match
+-- Blizzard's native level display; plain dark texture only as fallback.
+function SQP:CreateLevelChip(parent)
+    local chip = parent:CreateTexture(nil, "OVERLAY", nil, 0)
+    if chip.SetAtlas then
+        local okAtlas = pcall(chip.SetAtlas, chip, "UI-HUD-Nameplates-LevelIndicator-rectangle")
+        if okAtlas then
+            chip.usesLevelAtlas = true
+        end
+    end
+    if not chip.usesLevelAtlas then
+        chip:SetColorTexture(0, 0, 0, 0.55)
+    end
+    chip:Hide()
+    return chip
+end
+
 -- Unified mode shows the count in a native level-display style chip (dark
 -- backdrop box hugging the number) instead of the floating jellybean. The
 -- chip resizes to fit the current text on every update.
@@ -153,7 +171,9 @@ function SQP:UpdateUnifiedChip(questFrame)
     local w = (iconText.GetStringWidth and iconText:GetStringWidth()) or 16
     local _, h = iconText:GetFont()
     chip:SetSize(w + 10, (h or 12) + 8)
-    chip:SetColorTexture(0, 0, 0, 0.55)
+    if not chip.usesLevelAtlas then
+        chip:SetColorTexture(0, 0, 0, 0.55)
+    end
     chip:Show()
 end
 
@@ -314,10 +334,7 @@ function SQP:CreateQuestPlate(nameplate)
 
     end
     -- A texture choice is available in both parent/integration modes.
-    local chip = questFrame:CreateTexture(nil, "OVERLAY", nil, 0)
-    chip:SetColorTexture(0, 0, 0, 0.55)
-    chip:Hide()
-    questFrame.levelChip = chip
+    questFrame.levelChip = self:CreateLevelChip(questFrame)
     self.QuestPlates[nameplate] = questFrame
     
     -- Quest icon (jellybean)
