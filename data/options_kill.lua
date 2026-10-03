@@ -39,7 +39,7 @@ function SQP:CreateKillOptions(content)
         slider:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -8, yOff)
         SQP.optionControls[key] = slider
         SQP.optionControls[key .. "Label"] = slider.valueLabel
-        return yOff - 36
+        return yOff - slider:GetHeight() - 8
     end
 
     -- LEFT: Kill Icon
@@ -189,6 +189,7 @@ function SQP:CreateKillOptions(content)
             local oc = SQP.optionControls
             SQP:SetSetting('showKillIcon',      D.showKillIcon)
             SQP:SetSetting('killShowIconBackground', D.killShowIconBackground)
+            SQP:SetSetting('killLevelChip', nil)
             SQP:SetSetting('animateQuestIcons', D.animateQuestIcons)
             SQP:SetSetting('killAnimateMain',   D.killAnimateMain)
             SQP:SetSetting('killAnimationIntensity', D.killAnimationIntensity)
@@ -215,7 +216,7 @@ function SQP:CreateKillOptions(content)
             if oc.killIconSize    then oc.killIconSize.SetValue(D.killIconSize) end
             if oc.killIconOffsetX then oc.killIconOffsetX.SetValue(D.killIconOffsetX) end
             if oc.killIconOffsetY then oc.killIconOffsetY.SetValue(D.killIconOffsetY) end
-            if oc.killFontSize    then oc.killFontSize.SetValue(D.killFontSize) end
+            if oc.killFontSize then oc.killFontSize.SetValue(SQP:GetSettingBaseline("killFontSize")) end
             if oc.killFontFamily and type(oc.killFontFamily.Reset) == "function" then
                 oc.killFontFamily:Reset()
             elseif oc.killFontFamily and type(oc.killFontFamily.SetPath) == "function" then

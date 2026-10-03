@@ -196,6 +196,25 @@ SQP.DEFAULTS = {
 
 SQP.defaultMinimapAngle = 220
 
+-- Every control and renderer resolves the same baseline. Per-type fonts
+-- inherit General until an explicit override is saved.
+function SQP:GetSettingBaseline(key)
+    local value = self.DEFAULTS[key]
+    if value ~= nil then return value end
+    if key:match("^(kill)FontSize$") or key:match("^(loot)FontSize$") or key:match("^(percent)FontSize$") then
+        return SQPSettings.fontSize or self.DEFAULTS.fontSize
+    end
+    if key:match("^(kill)FontFamily$") or key:match("^(loot)FontFamily$") or key:match("^(percent)FontFamily$") then
+        return SQPSettings.fontFamily or self.DEFAULTS.fontFamily
+    end
+end
+
+function SQP:GetSettingValue(key)
+    local value = SQPSettings[key]
+    if value ~= nil then return value end
+    return self:GetSettingBaseline(key)
+end
+
 -- Declare defaults before constructing the single persistent database owner.
 SQP.db = RGX:NewDatabase("SQPForeverSettings", SQP.DEFAULTS, {
     profileIsGlobal = true,

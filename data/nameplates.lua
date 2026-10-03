@@ -64,6 +64,32 @@ local function setFontSafe(fontString, fontPath, fontSize, fontFlags)
     return false
 end
 
+function SQP:UsesLevelChip(typeKey)
+    local value = typeKey and SQPSettings[typeKey .. "LevelChip"]
+    if value == nil then value = SQPSettings.unifiedNameplates end
+    return value == true
+end
+
+-- This is the sole placement/size model for real and preview overlays.
+function SQP:ApplyQuestLayout(questFrame, anchorTarget, parentScaleRatio)
+    local icon = questFrame.icon
+    if not icon or not anchorTarget then return end
+    questFrame:SetScale(self:GetSettingValue("scale") * (parentScaleRatio or 1))
+    icon:SetSize(28, 22)
+    icon:ClearAllPoints()
+    icon:SetPoint(self:GetSettingValue("anchor"), anchorTarget,
+        self:GetSettingValue("relativeTo"), self:GetSettingValue("offsetX"), self:GetSettingValue("offsetY"))
+    for _, key in ipairs({ "kill", "loot" }) do
+        local badge = questFrame[key .. "Icon"]
+        if badge then
+            self:AnchorTaskIcon(badge, icon, key)
+            local size = self:GetSettingValue(key .. "IconSize")
+            badge:SetSize(size, size)
+        end
+    end
+    questFrame._anchorTarget = anchorTarget
+end
+
 -- Position the percent sign ("icon" mode) or the combined percent text
 -- ("text" mode). In icon mode the side setting controls placement: hugging
 -- the number's left/right side, or in the kill/loot mini-icon badge slots.
@@ -73,8 +99,8 @@ function SQP:AnchorPercentSign(percentIcon, icon, textMode)
     if not percentIcon or not icon then
         return
     end
-    local offX = SQPSettings.percentIconOffsetX or 18
-    local offY = SQPSettings.percentIconOffsetY or 0
+    local offX = self:GetSettingValue("percentIconOffsetX")
+    local offY = self:GetSettingValue("percentIconOffsetY")
     percentIcon:ClearAllPoints()
     if textMode then
         percentIcon:SetPoint('CENTER', icon, offX, offY)
@@ -93,18 +119,33 @@ end
 -- per-type X/Y offsets fine-tune from there.
 function SQP:AnchorTaskIcon(iconTex, icon, typeKey)
     if not iconTex or not icon then return end
-    local x = SQPSettings[typeKey .. "IconOffsetX"]
-    if x == nil then x = (typeKey == "loot") and -38 or 2 end
-    local y = SQPSettings[typeKey .. "IconOffsetY"]
-    if y == nil then y = (typeKey == "loot") and 16 or 15 end
-    local side = SQPSettings[typeKey .. "IconSide"]
-    if side == nil then side = (typeKey == "kill") and "left" or "right" end
+    local x = self:GetSettingValue(typeKey .. "IconOffsetX")
+    local y = self:GetSettingValue(typeKey .. "IconOffsetY")
+    local side = self:GetSettingValue(typeKey .. "IconSide")
     iconTex:ClearAllPoints()
     if side == "left" then
         iconTex:SetPoint('TOPRIGHT', icon, 'BOTTOMLEFT', x, y)
     else
         iconTex:SetPoint('TOPLEFT', icon, 'BOTTOMRIGHT', x, y)
     end
+end
+
+-- The count chip uses the client's own level-indicator rectangle atlas
+-- (verified in the 1.60.1 Forever AtlasInfo dump) so unified plates match
+-- Blizzard's native level display; plain dark texture only as fallback.
+function SQP:CreateLevelChip(parent)
+    local chip = parent:CreateTexture(nil, "OVERLAY", nil, 0)
+    if chip.SetAtlas then
+        local okAtlas = pcall(chip.SetAtlas, chip, "UI-HUD-Nameplates-LevelIndicator-rectangle")
+        if okAtlas then
+            chip.usesLevelAtlas = true
+        end
+    end
+    if not chip.usesLevelAtlas then
+        chip:SetColorTexture(0, 0, 0, 0.55)
+    end
+    chip:Hide()
+    return chip
 end
 
 -- Unified mode shows the count in a native level-display style chip (dark
@@ -130,7 +171,9 @@ function SQP:UpdateUnifiedChip(questFrame)
     local w = (iconText.GetStringWidth and iconText:GetStringWidth()) or 16
     local _, h = iconText:GetFont()
     chip:SetSize(w + 10, (h or 12) + 8)
-    chip:SetColorTexture(0, 0, 0, 0.55)
+    if not chip.usesLevelAtlas then
+        chip:SetColorTexture(0, 0, 0, 0.55)
+    end
     chip:Show()
 end
 
@@ -253,8 +296,8 @@ function SQP:UpdateQuestToast(questFrame, replay)
         if group:IsPlaying() then group:Stop() end
         questFrame.qmark:SetAlpha(0)
     else
-        group:SetLooping("REPEAT")
-        if replay or not group:IsPlaying() then
+        group:SetLooping(questFrame.isPreview and "REPEAT" or "NONE")
+        if replay or (questFrame.isPreview and not group:IsPlaying()) then
             if group:IsPlaying() then group:Stop() end
             group:Play()
         end
@@ -289,13 +332,9 @@ function SQP:CreateQuestPlate(nameplate)
             questFrame:SetFrameLevel(level + 5)
         end
 
-        -- Level-display style chip behind the count text (the unified look:
-        -- a dark backdrop hugging the number, like Blizzard's unit level).
-        local chip = questFrame:CreateTexture(nil, "OVERLAY", nil, 0)
-        chip:SetColorTexture(0, 0, 0, 0.55)
-        chip:Hide()
-        questFrame.levelChip = chip
     end
+    -- A texture choice is available in both parent/integration modes.
+    questFrame.levelChip = self:CreateLevelChip(questFrame)
     self.QuestPlates[nameplate] = questFrame
     
     -- Quest icon (jellybean)
@@ -304,15 +343,8 @@ function SQP:CreateQuestPlate(nameplate)
     icon:SetTexture('Interface/QuestFrame/AutoQuest-Parts')
     icon:SetTexCoord(0.30273438, 0.41992188, 0.015625, 0.953125)
     local anchorTarget = self:GetPlateAnchorTarget(nameplate)
-    icon:SetPoint(
-        SQPSettings.anchor or 'RIGHT', 
-        anchorTarget, 
-        SQPSettings.relativeTo or 'LEFT', 
-        SQPSettings.offsetX or 0,
-        SQPSettings.offsetY or 0
-    )
-    questFrame._anchorTarget = anchorTarget
     questFrame.icon = icon
+    self:ApplyQuestLayout(questFrame, anchorTarget)
 
     -- Dramatic pulse for main quest icon (more noticeable)
     local function CreateMainPulse(region)
@@ -356,9 +388,6 @@ function SQP:CreateQuestPlate(nameplate)
         return pulse
     end
     
-    -- Apply scale to the quest frame
-    questFrame:SetScale(SQPSettings.scale or 1.1)
-    
     -- Item texture
     local itemTexture = questFrame:CreateTexture(nil, nil, nil, 1)
     itemTexture:SetPoint('TOPRIGHT', icon, 'BOTTOMLEFT', 12, 12)
@@ -370,7 +399,7 @@ function SQP:CreateQuestPlate(nameplate)
     -- Kill quest icon (hostile cursor knife/sword)
     local killIcon = questFrame:CreateTexture(nil, "OVERLAY", nil, 1)
     self:AnchorTaskIcon(killIcon, icon, "kill")
-    killIcon:SetSize(SQPSettings.killIconSize or 16, SQPSettings.killIconSize or 16)
+    killIcon:SetSize(self:GetSettingValue("killIconSize"), self:GetSettingValue("killIconSize"))
     killIcon:SetTexture('Interface/Cursor/Attack')
     if not killIcon:GetTexture() then
         killIcon:SetTexture('Interface/Icons/INV_Sword_04')
@@ -388,7 +417,7 @@ function SQP:CreateQuestPlate(nameplate)
         lootIcon:SetTexture('Interface/Icons/INV_Misc_Bag_10')
         lootIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
     end
-    lootIcon:SetSize(SQPSettings.lootIconSize or 16, SQPSettings.lootIconSize or 16)
+    lootIcon:SetSize(self:GetSettingValue("lootIconSize"), self:GetSettingValue("lootIconSize"))
     self:AnchorTaskIcon(lootIcon, icon, "loot")
     lootIcon:Hide()
     questFrame.lootIcon = lootIcon
@@ -439,6 +468,7 @@ function SQP:CreateQuestPlate(nameplate)
     questFrame.iconPulse = CreateMainPulse(icon)
     questFrame.percentPulse = CreatePulse(percentIcon)
     questFrame.percentOutlinePulse = CreatePulse(percentIconOutline)
+    self:ApplyQuestLayout(questFrame, anchorTarget)
     
     -- Quest complete animation (quick "pops" when the quest frame shows)
     self:CreateQuestToast(questFrame, icon)
@@ -486,17 +516,7 @@ function SQP:RefreshQuestPlateAnchor(nameplate, force)
     end
 
     local target = self:GetPlateAnchorTarget(nameplate)
-    if force or questFrame._anchorTarget ~= target then
-        questFrame.icon:ClearAllPoints()
-        questFrame.icon:SetPoint(
-            SQPSettings.anchor or 'RIGHT',
-            target,
-            SQPSettings.relativeTo or 'LEFT',
-            SQPSettings.offsetX or 0,
-            SQPSettings.offsetY or 0
-        )
-        questFrame._anchorTarget = target
-    end
+    self:ApplyQuestLayout(questFrame, target)
 end
 
 -- Rebuild every quest overlay after switching unified/legacy mode
@@ -669,20 +689,10 @@ function SQP:RefreshAllNameplates()
                 return value ~= false
             end
 
-            questFrame:SetScale(SQPSettings.scale or 1.1)
             self:RefreshQuestPlateAnchor(plate, true)
 
             self:UpdateQuestToast(questFrame, false)
 
-            if questFrame.killIcon then
-                self:AnchorTaskIcon(questFrame.killIcon, questFrame.icon, "kill")
-                questFrame.killIcon:SetSize(SQPSettings.killIconSize or 16, SQPSettings.killIconSize or 16)
-            end
-            if questFrame.lootIcon then
-                self:AnchorTaskIcon(questFrame.lootIcon, questFrame.icon, "loot")
-                questFrame.lootIcon:SetSize(SQPSettings.lootIconSize or 16, SQPSettings.lootIconSize or 16)
-            end
-            
             -- Update font settings
             if questFrame.iconText then
                 local fontTypeKey

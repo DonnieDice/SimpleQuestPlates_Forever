@@ -540,7 +540,7 @@ function SQP:UpdateQuestIcon(plate, unitID)
     end
 
     local percentIconMode = IsIconStyleEnabled("percent")
-    local unified = self:IsUnifiedMode(plate)
+    local unified = self:UsesLevelChip(effectiveType)
     -- The native level chip is the complete display. Do not render a second
     -- floating percent sign beside it; put the percentage inside the chip.
     local showPercentIcon = not unified and showIcon and questType == 3
@@ -785,7 +785,7 @@ function SQP:UpdateQuestIcon(plate, unitID)
 
     -- Unified mode: the level-chip replaces the jellybean visual; the icon
     -- frame stays as anchor geometry but its texture stays hidden.
-    if self:IsUnifiedMode(plate) then
+    if unified then
         if Q.icon then Q.icon:Hide() end
         self:UpdateUnifiedChip(Q)
     elseif Q.levelChip then
