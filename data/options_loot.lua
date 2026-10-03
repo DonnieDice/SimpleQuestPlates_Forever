@@ -39,7 +39,7 @@ function SQP:CreateLootOptions(content)
         slider:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -8, yOff)
         SQP.optionControls[key] = slider
         SQP.optionControls[key .. "Label"] = slider.valueLabel
-        return yOff - 36
+        return yOff - slider:GetHeight() - 8
     end
 
     -- LEFT: Loot Icon
@@ -189,6 +189,7 @@ function SQP:CreateLootOptions(content)
             local oc = SQP.optionControls
             SQP:SetSetting('showLootIcon',      D.showLootIcon)
             SQP:SetSetting('lootShowIconBackground', D.lootShowIconBackground)
+            SQP:SetSetting('lootLevelChip', nil)
             SQP:SetSetting('animateQuestIcons', D.animateQuestIcons)
             SQP:SetSetting('lootAnimateMain',   D.lootAnimateMain)
             SQP:SetSetting('lootAnimationIntensity', D.lootAnimationIntensity)
@@ -218,7 +219,7 @@ function SQP:CreateLootOptions(content)
             if oc.lootIconSize    then oc.lootIconSize.SetValue(D.lootIconSize) end
             if oc.lootIconOffsetX then oc.lootIconOffsetX.SetValue(D.lootIconOffsetX) end
             if oc.lootIconOffsetY then oc.lootIconOffsetY.SetValue(D.lootIconOffsetY) end
-            if oc.lootFontSize    then oc.lootFontSize.SetValue(D.lootFontSize) end
+            if oc.lootFontSize then oc.lootFontSize.SetValue(SQP:GetSettingBaseline("lootFontSize")) end
             if oc.lootFontFamily and type(oc.lootFontFamily.Reset) == "function" then
                 oc.lootFontFamily:Reset()
             elseif oc.lootFontFamily and type(oc.lootFontFamily.SetPath) == "function" then

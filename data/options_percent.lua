@@ -39,7 +39,7 @@ function SQP:CreatePercentOptions(content)
         slider:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -8, yOff)
         SQP.optionControls[key] = slider
         SQP.optionControls[key .. "Label"] = slider.valueLabel
-        return yOff - 36
+        return yOff - slider:GetHeight() - 8
     end
 
     -- LEFT: Percent Icon
@@ -218,6 +218,7 @@ function SQP:CreatePercentOptions(content)
             local oc = SQP.optionControls
             SQP:SetSetting('showPercentIcon', D.showPercentIcon)
             SQP:SetSetting('percentShowIconBackground', D.percentShowIconBackground)
+            SQP:SetSetting('percentLevelChip', nil)
             SQP:SetSetting('percentSignSide', D.percentSignSide)
             SQP:SetSetting('animateQuestIcons', D.animateQuestIcons)
             SQP:SetSetting('percentAnimateMain', D.percentAnimateMain)
@@ -247,7 +248,7 @@ function SQP:CreatePercentOptions(content)
             if oc.percentIconSize   then oc.percentIconSize.SetValue(D.percentIconSize) end
             if oc.percentIconOffsetX then oc.percentIconOffsetX.SetValue(D.percentIconOffsetX) end
             if oc.percentIconOffsetY then oc.percentIconOffsetY.SetValue(D.percentIconOffsetY) end
-            if oc.percentFontSize then oc.percentFontSize.SetValue(D.percentFontSize) end
+            if oc.percentFontSize then oc.percentFontSize.SetValue(SQP:GetSettingBaseline("percentFontSize")) end
             if oc.percentFontFamily and type(oc.percentFontFamily.Reset) == "function" then
                 oc.percentFontFamily:Reset()
             elseif oc.percentFontFamily and type(oc.percentFontFamily.SetPath) == "function" then

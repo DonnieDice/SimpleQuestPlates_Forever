@@ -7,9 +7,7 @@
 
 local addonName, SQP = ...
 local CreateFrame = CreateFrame
-local floor = math.floor
 local pcall = pcall
-local tonumber = tonumber
 
 -- Create preview nameplate section
 function SQP:CreatePreviewSection(parent)
@@ -78,7 +76,7 @@ function SQP:CreatePreviewSection(parent)
     -- and legacy modes, so the preview icon must anchor to this analog —
     -- never mode-switched between the mock bar and the mock plate.
     local anchorAnalog = CreateFrame("Frame", nil, nameplate)
-    anchorAnalog:SetAllPoints(nameplate)
+    anchorAnalog:SetAllPoints(healthBar)
 
     -- Blizzard target display: white centered name and a blue bar.
     local nameText = nameplate:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -118,6 +116,7 @@ function SQP:CreatePreviewSection(parent)
     -- Create preview quest icon
     local questFrame = CreateFrame("Frame", nil, nameplate)
     questFrame:SetAllPoints()
+    questFrame.isPreview = true
 
     -- Quest icon
     local icon = questFrame:CreateTexture(nil, "OVERLAY", nil, 1)
@@ -242,6 +241,13 @@ function SQP:CreatePreviewSection(parent)
     local questChip = questFrame:CreateTexture(nil, "OVERLAY", nil, 0)
     questChip:SetColorTexture(0, 0, 0, 0.55)
     questChip:Hide()
+    -- Preview and live overlays share the same chip updater; the preview must
+    -- never maintain its own sizing logic.
+    questFrame.levelChip = questChip
+    questFrame.iconText = iconText
+    questFrame.icon = icon
+    questFrame.killIcon = killIcon
+    questFrame.lootIcon = lootIcon
 
     -- Store references
     previewFrame.nameplate = nameplate
@@ -266,20 +272,28 @@ function SQP:CreatePreviewSection(parent)
     previewFrame.lootIconPulse = CreatePulse(lootIcon)
 
     -- Mirror a live nameplate's geometry so preview offsets match in-world placement.
-    local function Clamp(value, minValue, maxValue)
-        if value < minValue then return minValue end
-        if value > maxValue then return maxValue end
+    -- Safely read frame dimensions that may be protected/tainted values.
+    local function ToPlainNumber(value)
+        local api = _G.RGXFramework and _G.RGXFramework.API
+        if not api or type(api.CanAccessValue) ~= "function" then return nil end
+        local ok, accessible = pcall(api.CanAccessValue, value)
+        if not ok or accessible ~= true then return nil end
+        if type(value) ~= "number" then return nil end
+        if value ~= value or value == math.huge or value == -math.huge then return nil end
         return value
     end
 
-    -- Safely read frame dimensions that may be protected/tainted values.
-    local function ToPlainNumber(value)
-        if value == nil then return nil end
-        local okString, stringValue = pcall(tostring, value)
-        if not okString or not stringValue then
-            return nil
+    local function ReadPlainValues(frame, methodName)
+        if not frame or type(frame[methodName]) ~= "function" then return nil end
+        local values = { pcall(frame[methodName], frame) }
+        if not values[1] then return nil end
+        local api = _G.RGXFramework and _G.RGXFramework.API
+        if not api or type(api.CanAccessValue) ~= "function" then return nil end
+        for i = 2, #values do
+            local ok, accessible = pcall(api.CanAccessValue, values[i])
+            if not ok or accessible ~= true then return nil end
         end
-        return tonumber(stringValue)
+        return unpack(values, 2)
     end
 
     local function GetFrameDimension(frame, methodName, fallback)
@@ -292,6 +306,9 @@ function SQP:CreatePreviewSection(parent)
 
         local numericValue = ToPlainNumber(rawValue)
         if not numericValue then
+            return fallback
+        end
+        if (methodName == "GetWidth" or methodName == "GetHeight") and numericValue <= 0 then
             return fallback
         end
 
@@ -319,6 +336,7 @@ function SQP:CreatePreviewSection(parent)
 
     local function GetReferenceHealthBar(plate)
         if not plate or not plate.UnitFrame then return nil end
+        if plate.UnitFrame.IsForbidden and plate.UnitFrame:IsForbidden() then return nil end
         return (plate.UnitFrame.HealthBarsContainer and plate.UnitFrame.HealthBarsContainer.healthBar)
             or plate.UnitFrame.healthBar
             or plate.UnitFrame.HealthBar
@@ -328,6 +346,7 @@ function SQP:CreatePreviewSection(parent)
 
     local function GetReferenceNameText(plate)
         if not plate or not plate.UnitFrame then return nil end
+        if plate.UnitFrame.IsForbidden and plate.UnitFrame:IsForbidden() then return nil end
         return plate.UnitFrame.name
             or plate.UnitFrame.Name
             or plate.UnitFrame.nameText
@@ -361,29 +380,30 @@ function SQP:CreatePreviewSection(parent)
         local refPlate = GetReferenceNameplate()
         local plateWidth, plateHeight = 140, 38
         local healthWidth, healthHeight = 110, 11
+        local refHealth
         if refPlate then
-            plateWidth = Clamp(floor(GetFrameDimension(refPlate, "GetWidth", plateWidth) + 0.5), 80, 260)
-            plateHeight = Clamp(floor(GetFrameDimension(refPlate, "GetHeight", plateHeight) + 0.5), 24, 80)
+            plateWidth = GetFrameDimension(refPlate, "GetWidth", plateWidth)
+            plateHeight = GetFrameDimension(refPlate, "GetHeight", plateHeight)
 
-            local refHealth = GetReferenceHealthBar(refPlate)
+            refHealth = GetReferenceHealthBar(refPlate)
             local refHealthWidth = GetFrameDimension(refHealth, "GetWidth", nil)
             local refHealthHeight = GetFrameDimension(refHealth, "GetHeight", nil)
             if refHealthWidth and refHealthHeight then
-                healthWidth = Clamp(floor(refHealthWidth + 0.5), 70, 240)
-                healthHeight = Clamp(floor(refHealthHeight + 0.5), 6, 24)
+                healthWidth = refHealthWidth
+                healthHeight = refHealthHeight
             else
-                healthWidth = Clamp(plateWidth - 30, 70, 240)
+                healthWidth = math.max(1, plateWidth - 30)
             end
 
-            local statusTexture = refHealth and refHealth.GetStatusBarTexture and refHealth:GetStatusBarTexture()
+            local statusTexture = ReadPlainValues(refHealth, "GetStatusBarTexture")
             if statusTexture and statusTexture.GetTexture then
-                local texturePath = statusTexture:GetTexture()
+                local texturePath = ReadPlainValues(statusTexture, "GetTexture")
                 if texturePath then
                     healthBar:SetStatusBarTexture(texturePath)
                 end
             end
             if refHealth and refHealth.GetStatusBarColor then
-                local r, g, b, a = refHealth:GetStatusBarColor()
+                local r, g, b, a = ReadPlainValues(refHealth, "GetStatusBarColor")
                 if r and g and b then
                     healthBar:SetStatusBarColor(r, g, b, a or 1)
                 end
@@ -391,13 +411,13 @@ function SQP:CreatePreviewSection(parent)
 
             local refName = GetReferenceNameText(refPlate)
             if refName and refName.GetFont and nameText.SetFont then
-                local font, size, flags = refName:GetFont()
+                local font, size, flags = ReadPlainValues(refName, "GetFont")
                 if font and size then
                     nameText:SetFont(font, size, flags)
                 end
             end
             if refName and refName.GetTextColor and nameText.SetTextColor then
-                local nr, ng, nb, na = refName:GetTextColor()
+                local nr, ng, nb, na = ReadPlainValues(refName, "GetTextColor")
                 if nr and ng and nb then
                     nameText:SetTextColor(nr, ng, nb, na or 1)
                 end
@@ -405,19 +425,40 @@ function SQP:CreatePreviewSection(parent)
         end
 
         nameplate:SetSize(plateWidth, plateHeight)
+        local previewScale = GetFrameDimension(previewFrame, "GetEffectiveScale", 1)
+        local referenceScale = GetFrameDimension(refPlate, "GetEffectiveScale", previewScale)
+        if previewScale <= 0 then previewScale = 1 end
+        if referenceScale <= 0 then referenceScale = previewScale end
+        nameplate:SetScale(referenceScale / previewScale)
         healthBar:ClearAllPoints()
         healthBar:SetSize(healthWidth, healthHeight)
+        healthBar:SetScale(1)
         healthBar:SetPoint("CENTER", nameplate, "CENTER", 0, -5)
+        if refHealth and refPlate then
+            local healthScale = GetFrameDimension(refHealth, "GetEffectiveScale", referenceScale)
+            local plateLeft = GetFrameDimension(refPlate, "GetLeft", nil)
+            local plateBottom = GetFrameDimension(refPlate, "GetBottom", nil)
+            local healthLeft = GetFrameDimension(refHealth, "GetLeft", nil)
+            local healthBottom = GetFrameDimension(refHealth, "GetBottom", nil)
+            if healthScale > 0 and plateLeft and plateBottom and healthLeft and healthBottom then
+                healthBar:ClearAllPoints()
+                healthBar:SetScale(healthScale / referenceScale)
+                healthBar:SetPoint("BOTTOMLEFT", nameplate, "BOTTOMLEFT",
+                    (healthLeft * healthScale - plateLeft * referenceScale) / healthScale,
+                    (healthBottom * healthScale - plateBottom * referenceScale) / healthScale)
+            end
+        end
 
         -- The anchor analog mirrors the real frame the live icon anchors to:
         -- GetPlateAnchorTarget's HealthBarsContainer (or bar) with its true
         -- position inside the plate; falls back to the full mock plate when
         -- no reference plate is on screen.
         anchorAnalog:ClearAllPoints()
-        anchorAnalog:SetAllPoints(nameplate)
+        anchorAnalog:SetScale(1)
+        anchorAnalog:SetAllPoints(healthBar)
         if refPlate and SQP.GetPlateAnchorTarget then
             local okAnchor, refAnchor = pcall(SQP.GetPlateAnchorTarget, SQP, refPlate)
-            if okAnchor and refAnchor and refAnchor ~= refPlate then
+            if okAnchor and refAnchor then
                 local anchorWidth = GetFrameDimension(refAnchor, "GetWidth", nil)
                 local anchorHeight = GetFrameDimension(refAnchor, "GetHeight", nil)
                 if anchorWidth and anchorHeight then
@@ -428,48 +469,34 @@ function SQP:CreatePreviewSection(parent)
                     local anchorLeft = GetFrameDimension(refAnchor, "GetLeft", nil)
                     local anchorBottom = GetFrameDimension(refAnchor, "GetBottom", nil)
                     if plateLeft and plateBottom and anchorLeft and anchorBottom then
-                        anchorAnalog:SetPoint("BOTTOMLEFT", nameplate, "BOTTOMLEFT", anchorLeft - plateLeft, anchorBottom - plateBottom)
+                        local anchorScale = GetFrameDimension(refAnchor, "GetEffectiveScale", referenceScale)
+                        if anchorScale <= 0 then anchorScale = referenceScale end
+                        anchorAnalog:SetScale(anchorScale / referenceScale)
+                        anchorAnalog:SetPoint("BOTTOMLEFT", nameplate, "BOTTOMLEFT",
+                            (anchorLeft * anchorScale - plateLeft * referenceScale) / anchorScale,
+                            (anchorBottom * anchorScale - plateBottom * referenceScale) / anchorScale)
                     else
-                        anchorAnalog:SetPoint("CENTER", nameplate, "CENTER", 0, 0)
+                        anchorAnalog:SetPoint("CENTER", healthBar, "CENTER", 0, 0)
                     end
                 end
             end
         end
 
-        icon:SetSize(28, 22)
-        icon:ClearAllPoints()
-        -- Mirror the live anchor target exactly: the live code anchors to
-        -- GetPlateAnchorTarget's result in BOTH unified and legacy modes,
-        -- so the preview always anchors to the analog, never mode-switched.
-        local anchorTarget = anchorAnalog
-        icon:SetPoint(
-            SQPSettings.anchor or 'RIGHT',
-            anchorTarget,
-            SQPSettings.relativeTo or 'LEFT',
-            SQPSettings.offsetX or 0,
-            SQPSettings.offsetY or 0
-        )
+        local referenceParent = refPlate
+        if SQP:IsUnifiedMode(refPlate) then referenceParent = refPlate.UnitFrame end
+        local referenceParentScale = GetFrameDimension(referenceParent, "GetEffectiveScale", referenceScale)
+        if referenceParentScale <= 0 then referenceParentScale = referenceScale end
+        SQP:ApplyQuestLayout(questFrame, anchorAnalog, referenceParentScale / referenceScale)
 
         if self.modeCaption then
             if SQPSettings.enabled == false then
                 self.modeCaption:SetText("|cff9a9a9aSQP disabled|r")
-            elseif SQPSettings.unifiedNameplates then
+            elseif SQP:UsesLevelChip(self.questType or "kill") then
                 self.modeCaption:SetText("|cff58be81Mode: Unified (level-style chip)|r")
             else
                 self.modeCaption:SetText("|cff9a9a9aMode: Overlay (floating)|r")
             end
         end
-
-        if self.killIcon then
-            SQP:AnchorTaskIcon(self.killIcon, icon, "kill")
-            self.killIcon:SetSize(SQPSettings.killIconSize or 14, SQPSettings.killIconSize or 14)
-        end
-        if self.lootIcon then
-            SQP:AnchorTaskIcon(self.lootIcon, icon, "loot")
-            self.lootIcon:SetSize(SQPSettings.lootIconSize or 14, SQPSettings.lootIconSize or 14)
-        end
-
-        questFrame:SetScale(SQPSettings.scale or 1.1)
 
         -- Update font with current quest type. Wrap in pcall so a font
         -- resolution failure (e.g. the registry not yet populated) cannot
@@ -609,7 +636,7 @@ function SQP:CreatePreviewSection(parent)
 
         -- Unified mode shows the count in a level-style chip (no jellybean)
         if self.questChip then
-            if SQPSettings.unifiedNameplates then
+            if SQP:UsesLevelChip(previewTypeKey) then
                 icon:Hide()
                 if previewTypeKey == "percent" then
                     iconText:SetText("75%")
@@ -617,12 +644,9 @@ function SQP:CreatePreviewSection(parent)
                     if self.percentIcon then self.percentIcon:Hide() end
                     if self.percentIconOutline then self.percentIconOutline:Hide() end
                 end
-                self.questChip:ClearAllPoints()
-                self.questChip:SetPoint("CENTER", iconText, "CENTER", 0, 0)
-                local cw = (iconText.GetStringWidth and iconText:GetStringWidth()) or 16
-                local _, ch = iconText:GetFont()
-                self.questChip:SetSize(cw + 10, (ch or 12) + 8)
-                self.questChip:Show()
+                -- Same updater as live plates; do not maintain a parallel size
+                -- path in the preview.
+                SQP:UpdateUnifiedChip(questFrame)
             else
                 self.questChip:Hide()
             end
