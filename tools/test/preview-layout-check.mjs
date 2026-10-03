@@ -76,7 +76,11 @@ lua.doStringSync(`
   function methods:GetValueStep()return self.step or 1 end
   function methods:SetValueStep(v)self.step=v end
   function methods:GetThumbTexture()return nil end
-  CreateFrame=function(kind,_,parent)local w=widget(parent)w.kind=kind return w end
+  CreateFrame=function(kind,_,parent,template)
+    local w=widget(parent)w.kind=kind
+    if template=='NamePlatePreviewTemplate'then w.NamePlate=widget(w)w.NamePlate.kind='Button' end
+    return w
+  end
   assert(loadstring(layout))('framework',UI)
   SQP={L={},optionControls={},DEFAULTS={scale=1.1,fontSize=12,anchor='RIGHT',relativeTo='LEFT',offsetX=0,offsetY=0,killIconSide='left',lootIconSide='right',killIconSize=12,lootIconSize=14,percentIconSize=8,killIconOffsetX=2,killIconOffsetY=15,lootIconOffsetX=-38,lootIconOffsetY=16,percentIconOffsetX=18,percentIconOffsetY=0},RefreshAllNameplates=noop,UpdateQuestFont=noop,GetOutlineInfo=function()return 0 end,IsAnimationEnabled=function()return false end,ApplyPulseDuration=noop,GetAnimationDuration=function()return 1 end}
   SQPSettings={scale=1.1,showQuestMarker=true,unifiedNameplates=false}
@@ -148,6 +152,7 @@ for(const [name,body]of [
     NamePlatePreviewMixin={} NamePlateDriverFrame={}
     local p=SQP:CreatePreviewSection(host)
     assert(p.plate,'client preview template not adopted')
+    assert(p.plate.kind=='Button','preview plate is not the wrapper child button')
     local unit=CreateFrame('Frame') local container=CreateFrame('Frame',nil,unit)
     local bar=CreateFrame('StatusBar',nil,container) container.healthBar=bar
     p.plate.UnitFrame=unit unit.HealthBarsContainer=container unit.healthBar=bar
