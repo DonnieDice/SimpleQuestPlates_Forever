@@ -56,6 +56,9 @@ end
 
 -- Create custom styled slider - delegates to RGXUI
 function SQP:CreateStyledSlider(parent, options)
+	options = options or {}
+	local baseline = options.key and self:GetSettingBaseline(options.key)
+	if baseline ~= nil then options.default = baseline end
 	local UI = _G.RGXUI
 	if UI and type(UI.CreateSlider) == "function" then
 		return UI:CreateSlider(parent, options)
@@ -86,6 +89,8 @@ function SQP:CreateStyledSlider(parent, options)
 	slider.value = valueLabel
 	slider.valueLabel = valueLabel
 
+	local nativeSetValue = slider.SetValue
+	local restoring = false
 	local function RefreshFromStorage()
 		local minV, maxV = slider:GetMinMaxValues()
 		local step = slider:GetValueStep() or 1
@@ -94,7 +99,9 @@ function SQP:CreateStyledSlider(parent, options)
 		if value == nil then value = minV end
 		local snapped = math.floor(value / step + 0.5) * step
 		snapped = math.max(minV, math.min(maxV, snapped))
-		slider:SetValue(snapped)
+		restoring = true
+		nativeSetValue(slider, snapped)
+		restoring = false
 		valueLabel:SetText(tostring(snapped) .. suffix)
 		local width = slider:GetWidth()
 		local thumb = slider:GetThumbTexture()
@@ -106,6 +113,7 @@ function SQP:CreateStyledSlider(parent, options)
 	end
 
 	slider:SetScript("OnValueChanged", function(self, value)
+		if restoring then return end
 		local minV, maxV = self:GetMinMaxValues()
 		local step = self:GetValueStep() or 1
 		value = math.max(minV, math.min(maxV, math.floor(value / step + 0.5) * step))
@@ -113,7 +121,12 @@ function SQP:CreateStyledSlider(parent, options)
 		valueLabel:SetText(tostring(value) .. suffix)
 		onChange(value)
 	end)
-	slider.SetValue = function(self, value) storage[key] = value RefreshFromStorage() end
+	slider.SetValue = function(self, value)
+		if value == nil and type(self) == "number" then value = self end
+		storage[key] = value
+		RefreshFromStorage()
+		onChange(storage[key])
+	end
 	slider.Refresh = RefreshFromStorage
 	RefreshFromStorage()
 	if slider.HookScript then
@@ -161,11 +174,11 @@ function SQP:CreateFontSection(parent, typeKey, yOffset, activatePreviewFn)
     local Fonts = _G.RGXFonts
     local sizeKey   = typeKey and (typeKey .. "FontSize")   or "fontSize"
     local familyKey = typeKey and (typeKey .. "FontFamily") or "fontFamily"
-    local defaultSize = (typeKey == "percent") and 8 or 12
+    local defaultSize = SQP:GetSettingBaseline(sizeKey)
     -- Display the effective font: inherited global unless this type has an
     -- explicit override; fall back to the framework default (Blizzard font).
-    local effectiveFamily = SQPSettings[familyKey] or SQPSettings.fontFamily
-    local defaultName = Fonts:ResolveName(effectiveFamily, Fonts:GetDefault()) or Fonts:GetDefault()
+    local baselineFamily = SQP:GetSettingBaseline(familyKey)
+    local defaultName = Fonts:ResolveName(baselineFamily, Fonts:GetDefault()) or Fonts:GetDefault()
 
     -- The Global card already supplies the Font header. Standalone per-type
     -- sections still need their own heading.
@@ -263,8 +276,11 @@ function SQP:CreateDisplayStyleSection(parent, typeKey, activatePreviewFn, yOffs
 
     local iconStyleBtn = self:CreateStyledButton(parent, "Icon", 68, 22)
     local textStyleBtn = self:CreateStyledButton(parent, "Text", 68, 22)
-    iconStyleBtn:SetPoint("TOPLEFT", parent, "TOP", -72, yOffset - 2)
+    local chipStyleBtn = self:CreateStyledButton(parent, "Level chip", 82, 22)
+    local chipKey = typeKey and (typeKey .. "LevelChip") or "unifiedNameplates"
+    iconStyleBtn:SetPoint("TOPLEFT", parent, "TOP", -117, yOffset - 2)
     textStyleBtn:SetPoint("LEFT", iconStyleBtn, "RIGHT", 8, 0)
+    chipStyleBtn:SetPoint("LEFT", textStyleBtn, "RIGHT", 8, 0)
 
     local function IsIconStyleEnabled()
         local value = SQPSettings[settingKey]
@@ -276,8 +292,10 @@ function SQP:CreateDisplayStyleSection(parent, typeKey, activatePreviewFn, yOffs
 
     local function UpdateStyleButtons()
         local iconStyle = IsIconStyleEnabled()
-        iconStyleBtn:SetAlpha(iconStyle and 1 or 0.6)
-        textStyleBtn:SetAlpha(iconStyle and 0.6 or 1)
+        local chipStyle = SQP:UsesLevelChip(typeKey)
+        iconStyleBtn:SetAlpha(not chipStyle and iconStyle and 1 or 0.6)
+        textStyleBtn:SetAlpha(not chipStyle and not iconStyle and 1 or 0.6)
+        chipStyleBtn:SetAlpha(chipStyle and 1 or 0.6)
     end
     UpdateStyleButtons()
     if self.optionControls then
@@ -300,13 +318,22 @@ function SQP:CreateDisplayStyleSection(parent, typeKey, activatePreviewFn, yOffs
     end
 
     iconStyleBtn:SetScript("OnClick", function()
+        SQP:SetSetting(chipKey, false)
         SQP:SetSetting(settingKey, true)
         BroadcastStyleUpdate()
         if activatePreviewFn then activatePreviewFn() end
         SQP:RefreshAllNameplates()
     end)
     textStyleBtn:SetScript("OnClick", function()
+        SQP:SetSetting(chipKey, false)
         SQP:SetSetting(settingKey, false)
+        BroadcastStyleUpdate()
+        if activatePreviewFn then activatePreviewFn() end
+        SQP:RefreshAllNameplates()
+    end)
+    chipStyleBtn:SetScript("OnClick", function()
+        SQP:SetSetting(chipKey, true)
+        SQP:SetSetting(settingKey, true)
         BroadcastStyleUpdate()
         if activatePreviewFn then activatePreviewFn() end
         SQP:RefreshAllNameplates()
